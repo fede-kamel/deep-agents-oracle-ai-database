@@ -20,7 +20,8 @@ running anything.
   `deepagents-oracle-health` image. Never run `db/setup_admin.py` (ADMIN).
 - Care actions. Never approve or reject a care action yourself; that is the
   clinician's or the doctor's decision in the web application (only
-  `scripts/demo_e2e.py` decides, and only when the operator runs it). You may run `db/reset_workflow.py`
+  `scripts/demo_e2e.py` and `web/scripts/ui-e2e.mjs` decide, and only when the
+  operator runs them). You may run `db/reset_workflow.py`
   only when the operator asks for a clean slate.
 - Integrity. Do not modify `agent/`, `db/`, `migrations/`, `sandbox/` or
   `scripts/` to make a check pass. Explain and stop instead.
@@ -31,13 +32,13 @@ running anything.
 
 | Path | Purpose |
 |---|---|
-| `agent/` | the Deep Agent: prompts, SQL and care-action tools, guards, memory, structured brief, runner |
+| `agent/` | the Deep Agent: prompts, SQL tools, care-action and escalation tools, guards, memory, structured brief, runner |
 | `migrations/` | Alembic: clinical schema, vector tables, cohort benchmark, row-level security, citable note ids, care actions, care and agent policies |
-| `db/` | ADMIN setup (operator), seed, in-database embedding, stats |
+| `db/` | ADMIN setup (operator), seed, in-database embedding, stats, demo reset |
 | `data/` | synthetic patients X, Y, Z; background cohort; public reference corpus loaders |
 | `sandbox/` | image, provider profile, sandbox policy |
-| `scripts/` | `preflight.sh`, `setup-data.sh`, `sandbox.sh`, `safety_probe.sh`, `verify.py`, `teardown.sh`, `operator/` |
-| `ui/`, `web/` | the web application: FastAPI backend, React front end |
+| `scripts/` | `preflight.sh`, `setup-data.sh`, `sandbox.sh`, `safety_probe.sh`, `verify.py`, `demo_e2e.py`, `webapp-check.sh`, `teardown.sh`, `operator/` |
+| `ui/`, `web/` | the web application: FastAPI backend, React front end; `web/scripts/ui-e2e.mjs` clicks through it in a browser |
 | `evidence/` | transcripts behind every claim, identifiers redacted |
 | `codex/` | the specification and the prompt |
 

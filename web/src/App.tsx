@@ -219,7 +219,7 @@ export default function App() {
             <div className="mx-auto max-w-[1180px] space-y-4">
               <AskCard question={question} setQuestion={setQuestion} onRun={run} running={running} notice={notice}
                 active={active && active.id !== view.id ? active : null} onWatch={watch} onReset={() => setQuestion(selected.question)} />
-              <PatientView patient={selected} refresh={epoch} />
+              <PatientView key={selected.key} patient={selected} refresh={epoch} />
             </div>
           </StepPage>
         )}
@@ -257,7 +257,7 @@ export default function App() {
             lead={<>The agents can only propose. You approve or reject each card; on approval the database executes it (a lab order, a portal message, an appointment request) and audits every step. Policy decides who may do what: the database refuses a medication change from the care coordinator, so it escalates to the medication-safety agent, and only the doctor can approve that agent's proposal. Nothing real is sent: every patient is synthetic.</>}
             primary={{ label: "See what the agent will remember", onClick: () => setStep("memory") }}
             secondary={`${actionCounts.pending} awaiting you · ${actionCounts.decided} decided`}>
-            <div className="mx-auto max-w-[980px]"><ActionsPanel patientKey={selected.key} refreshKey={`${view.status}:${proposals}:${step}`} onDecided={() => setDecisions((d) => d + 1)} onLoaded={countActions} /></div>
+            <div className="mx-auto max-w-[980px]"><ActionsPanel key={selected.key} patientKey={selected.key} refreshKey={`${view.status}:${proposals}:${step}`} onDecided={() => setDecisions((d) => d + 1)} onLoaded={countActions} /></div>
           </StepPage>
         )}
 

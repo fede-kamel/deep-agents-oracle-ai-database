@@ -44,7 +44,7 @@ def load(patient_key: str) -> Settings:
         dsn = os.environ["DA_DSN"]
         db_password = os.environ["DA_DB_PASSWORD"]
         region = os.environ.get("DA_GENAI_REGION", "us-chicago-1")
-        chat = os.environ.get("DA_CHAT_MODEL", "google.gemini-2.5-pro")
+        chat = os.environ.get("DA_CHAT_MODEL", "openai.gpt-5.5")
         worker = os.environ.get("DA_WORKER_MODEL", "google.gemini-2.5-flash")
     else:  # host development
         from common.config import load_config, password
@@ -52,7 +52,7 @@ def load(patient_key: str) -> Settings:
         cfg = load_config()
         dsn, db_password = cfg["dsn"], password(user)
         region = cfg.get("genai_region", "us-chicago-1")
-        chat = cfg.get("chat_model", "google.gemini-2.5-pro")
+        chat = cfg.get("chat_model", "openai.gpt-5.5")
         worker = cfg.get("worker_model", "google.gemini-2.5-flash")
 
     api_key = os.environ.get("OCI_GENAI_API_KEY", "")

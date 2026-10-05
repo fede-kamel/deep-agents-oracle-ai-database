@@ -1,7 +1,7 @@
 """Verify a brief against the database, and verify the database's own guarantees.
 
-    uv run python scripts/verify.py out/runs/<run>/brief-X.md   # check one brief
-    uv run python scripts/verify.py --rls-only                  # row-level security only
+    uv run python scripts/verify.py out/brief-X.md   # check one brief
+    uv run python scripts/verify.py --rls-only       # the database's guarantees: 25 checks
 
 For a brief: the structural checks the runner applies (agent/verify.py), then
 every cited note id must exist for that patient, every MEDQUAD and PMID id
@@ -9,8 +9,13 @@ must exist in its store, and every [SQL:<table>] must name a chart table.
 The lookups run as the patient's own read-only user, so a note id that
 belongs to another patient fails just like one that does not exist.
 
-For row-level security: each agent user sees exactly one patient, sees none
-of another patient's rows, and is refused every write.
+For the database (--rls-only): each agent user sees exactly one patient, sees
+none of another patient's rows, and is refused every write but a proposal;
+proposals are forced to 'proposed' and cannot be approved or executed by an
+agent; CP-03 refuses a medication change from the care coordinator, logs the
+refusal and stamps its escalation with the real sender; CP-02 holds the
+medication-safety agent's change for a physician; and the schema rejects
+anything not marked synthetic. Probe rows are removed afterwards.
 """
 
 from __future__ import annotations

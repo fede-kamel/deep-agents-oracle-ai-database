@@ -46,7 +46,7 @@ clusters other than a local OpenShell gateway with the Docker driver.
 | An Oracle Autonomous Database 26ai (an Always Free one works) with TLS (no wallet) and an ACL that admits this machine | always | ask for its TLS connect string (DSN) and host; write them to the config file (section 4.2) |
 | The ADMIN password | once, for section 4.3 | **never through the agent**: the operator runs `scripts/operator/db-admin.sh` in their own terminal |
 | An OCI Generative AI API key, region `us-chicago-1` | once, for section 4.4 | **never through the agent**: the operator runs `scripts/operator/genai-provider.sh` in their own terminal |
-| Chat models | optional | defaults `google.gemini-2.5-pro` (lead) and `google.gemini-2.5-flash` (specialists) |
+| Chat models | optional | defaults `openai.gpt-5.5` (lead) and `google.gemini-2.5-flash` (specialists); GPT-6 models refuse tools on the Chat Completions endpoint with an API key |
 
 The secret rule. The agent never asks for, receives, prints, logs, or stores
 a password or a key. The two operator scripts read them with `read -rs`. The
@@ -168,28 +168,37 @@ Checkpoint: `PREFLIGHT OK`, then `PROBE OK (7/7)`.
 ### 4.7 Briefs
 
 ```shell
-scripts/sandbox.sh run X </dev/null > out/run-X.jsonl
-uv run python scripts/verify.py out/runs/... # or extract the brief event, see below
+scripts/sandbox.sh run X </dev/null > out/run-X.jsonl 2> out/console-X.log
+uv run python -c "import json; b=[json.loads(l) for l in open('out/run-X.jsonl') if '\"type\": \"brief\"' in l]; print(b[-1]['markdown'])" > out/brief-X.md
+uv run python scripts/verify.py out/brief-X.md
 ```
 
-stdout carries JSON events; stderr carries the sandbox console. The `brief`
-event holds the Markdown; save it to `out/brief-<P>.md` and verify it. Repeat
-for Y and Z. One run takes two to five minutes.
+stdout carries JSON events; stderr carries the sandbox console. The last
+`brief` event holds the accepted Markdown. Repeat for Y and Z. One run takes
+four to eight minutes; a repair turn adds a few more.
 
 Checkpoint: each run exits 0 with a passing final `verify` event, and
-`scripts/verify.py out/brief-<P>.md` ends with `VERIFY OK`.
+`scripts/verify.py out/brief-<P>.md` ends with `VERIFY OK`. The console shows
+the policy chain: `✕ POLICY CP-03` for the care coordinator, an
+`escalation #n` line, and `propose_medication_change` from `medication-safety`.
 
 ### 4.7b The whole demo, end to end (optional, about 25 minutes)
 
 With the web application running on port 8765:
 
 ```shell
-uv run python scripts/demo_e2e.py </dev/null
+uv run python scripts/demo_e2e.py </dev/null                      # or add --evidence evidence to publish the runs
 ```
 
 Resets the demo, briefs X, Y and Z, decides every proposed action (the
 clinician's approval of each medication change must be refused; the doctor's
-executes it), then briefs Y again from memory. Checkpoint: `DEMO E2E OK`.
+executes it), then briefs Y again from memory. For each run it also checks
+the CP-03 refusal and that the escalation was resolved. Checkpoint:
+`DEMO E2E OK (41/41)`.
+
+The same flow in a real browser, clicking the screens a presenter uses (needs
+Google Chrome): `cd web && node scripts/ui-e2e.mjs Y`. Checkpoint:
+`UI E2E OK (22/22)`.
 
 ### 4.8 The web application
 
@@ -250,6 +259,8 @@ The five conditions in section 0.
 | HTTP 401 from OCI GenAI | the key was minted before its policy | mint a new key after the policy (operator) |
 | `ORA-20012: policy CP-02 ...` when approving | a clinician tried to approve a medication change | expected; approve it as the doctor |
 | `Refused by the database: ORA-20014: policy CP-03 ...` in a tool result | the care coordinator tried a medication change | expected; it escalates to the medication-safety agent |
+| `Refused: nothing was refused to you in this run` from `escalate_to_agent` | the coordinator tried to escalate before trying the change | expected; it proposes the change first, and the database refuses it |
+| gate problem `Escalation n is still open` or `the escalation was declined` | the medication change did not reach the doctor in this run | expected; the repair turn delegates to medication-safety, or tries another concern |
 | `Refused: 5 actions already proposed in this run` in a tool result | the care coordinator hit its cap | expected; the brief lists what it proposed |
 | `ORA-28115` when a tool proposes an action | row-level security refused a proposal for another patient | expected; that is the boundary |
 | `PermissionError` on the Hugging Face cache during setup | a sandboxed coding agent cannot write `~/.cache` | `setup-data.sh` sets `HF_HOME` inside the repository; keep it |
@@ -269,4 +280,5 @@ The operator removes the users and model with `scripts/operator/db-admin.sh
 End with: the preflight table; the probe table; the web application check; for each patient the run's
 seconds, tool calls, SQL queries, searches, delegations, citation count, and
 the verify result; the row-level-security result; any section-7 symptom met
-and what was done; the care actions each run proposed; and confirmation of section 5.2.
+and what was done; the care actions each run proposed, with its CP-03 refusal
+and escalation; and confirmation of section 5.2.

@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { CalendarPlus, Check, CircleCheck, FlaskConical, Loader2, MessageSquareText, Pill, ShieldAlert, ShieldCheck, Stethoscope, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PolicyChain } from "./PolicyChain";
 
 export type CareAction = {
@@ -171,20 +171,17 @@ export function ActionsPanel({ patientKey, refreshKey, onDecided, onLoaded }: {
   const [actions, setActions] = useState<CareAction[]>([]);
   const [busy, setBusy] = useState<number | null>(null);
   const [refusals, setRefusals] = useState<Record<number, string>>({});
-  const shown = useRef(patientKey);
-  shown.current = patientKey;
+  // The panel is keyed by patient in App, so a new patient gets a fresh panel and
+  // an answer for the previous one lands on a panel that is gone.
   const load = useCallback(() => {
-    const key = patientKey; // drop an answer that arrives after the patient changed
-    fetch(`/api/patients/${key}/actions`).then((r) => (r.ok ? r.json() : [])).then((a: CareAction[]) => {
-      if (shown.current !== key) return;
+    fetch(`/api/patients/${patientKey}/actions`).then((r) => (r.ok ? r.json() : [])).then((a: CareAction[]) => {
       setActions(a);
       onLoaded?.(a); // the step counts come from the same list the cards show
       // A refusal belongs to a card still awaiting a decision; drop it once decided.
       setRefusals((m) => Object.fromEntries(Object.entries(m).filter(([id]) => a.some((x) => x.id === Number(id) && (x.status === "proposed" || x.status === "needs_physician")))));
     })
-      .catch(() => shown.current === key && setActions([]));
+      .catch(() => setActions([]));
   }, [patientKey, onLoaded]);
-  useEffect(() => { setActions([]); setRefusals({}); }, [patientKey]);
   useEffect(load, [load, refreshKey]);
 
   const decide: Decide = async (id, decision, role, payload) => {

@@ -37,9 +37,7 @@ export const PatientView = memo(function PatientView({ patient, refresh }: { pat
   const [chart, setChart] = useState<Chart>();
   const [memory, setMemory] = useState<string>();
   useEffect(() => {
-    let current = true; // a slow answer for the previous patient must not land here
-    setChart(undefined);
-    setMemory(undefined);
+    let current = true; // keyed by patient in App; this guards the reset refresh
     getJSON<Chart>(`/api/patients/${patient.key}/chart`).then((c) => current && setChart(c)).catch(() => undefined);
     getJSON<{ text: string }>(`/api/patients/${patient.key}/memory`).then((m) => current && setMemory(m.text)).catch(() => current && setMemory(""));
     return () => { current = false; };

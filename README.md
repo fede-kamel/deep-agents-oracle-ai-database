@@ -1,5 +1,14 @@
 # Deep Agents on your own data
 
+Deep Agents run long, multi-step work on their own: they take an objective,
+plan it, hand each part to a specialist, and come back with the result and a
+record of how, stopping only where a person must decide. Most enterprise
+knowledge work is already a process with roles, systems, rules and
+sign-offs, so the way to put Deep Agents to work is to reverse-engineer that
+process: each role becomes an agent, each data source a tool, each rule a
+database policy, and each signature stays a human approval. This repository
+does that for one process, a clinic's pre-visit preparation.
+
 A LangChain Deep Agent, built with the open-source
 [`langchain-oracle`](https://github.com/oracle/langchain-oracle) packages,
 writes a pre-visit clinical brief from **Oracle AI Database 26ai**, inside an
@@ -14,8 +23,9 @@ message to the patient and a follow-up visit; when it tries to change a
 medication, the database refuses it by policy and it escalates to a
 medication-safety agent, whose proposal only a doctor can approve. The
 clinician approves or rejects each action in the web application; the
-database executes what was approved and audits every step. The agent remembers each patient across runs,
-in Oracle, and every step of every run is checkpointed there.
+database executes what was approved and audits every step. The agent
+remembers each patient across runs, in Oracle, and every step of every run is
+checkpointed there.
 
 Every patient is **synthetic**. The schema rejects anything else.
 
@@ -42,7 +52,7 @@ Four layers, each measured, none of which asks the agent to behave
 | Layer | What it enforces | Measured |
 |---|---|---|
 | OpenShell sandbox | egress to OCI Generative AI (`/openai/v1/**`) and the database listener, for `python3.12` only; the GenAI key is a placeholder the proxy swaps in transit | [`safety_probe.sh`](scripts/safety_probe.sh): 7/7 ([log](evidence/safety-probe-2026-10-05.log)) |
-| Oracle AI Database | each agent user has `SELECT` only; a Virtual Private Database policy shows it one patient; per-agent and per-role policies on every proposal; `CHECK` constraints reject non-synthetic rows | [`verify.py --rls-only`](scripts/verify.py): 25/25 ([log](evidence/rls-verify-2026-10-05.log)) |
+| Oracle AI Database | each agent user reads with `SELECT` and writes only proposals and escalations (`INSERT`); a Virtual Private Database policy shows it one patient; per-agent and per-role policies on every proposal; `CHECK` constraints reject non-synthetic rows | [`verify.py --rls-only`](scripts/verify.py): 25/25 ([log](evidence/rls-verify-2026-10-05.log)) |
 | Input guard | `PIIMiddleware` blocks SSN, phone, email, MRN, date-of-birth shapes and any other patient's id | [`agent/guards.py`](agent/guards.py) |
 | Brief gate | the runner accepts a brief only with every section, enough citations of every kind, and every cited id found in the database as the patient's own user | [`agent/verify.py`](agent/verify.py), [Figure 7](docs/figures/figure7-grounding-gate.png) |
 
@@ -59,7 +69,7 @@ back; the clinician never saw it.
 | Propose | `DA_AGENT_<P>`, inside the sandbox | `INSERT` into `care_action` only; a trigger forces `proposed` and stamps the proposer; row-level security (`update_check`) refuses any other patient; at most five per run |
 | Approve | `DA_CLINICIAN`, the web application | `EXECUTE` on `DECIDE_CARE_ACTION`, `SELECT` on the workflow tables; no table writes of its own |
 | Agent policy | policy `CP-03` in `care_policy` | each tool stamps its session with the calling agent's name (`CLIENT_IDENTIFIER`, set in tool code); only `medication-safety` may propose a medication change, so the care coordinator's attempt is refused (`ORA-20014`), logged in `policy_event`, and escalated through `agent_escalation` |
-| Escalate | policy `CP-02` in `care_policy` | a medication change is stored as `needs_physician` at insert, with the policy named in the audit trail; the clinician's approval is refused (`ORA-20012`) |
+| Doctor policy | policy `CP-02` in `care_policy` | a medication change is stored as `needs_physician` at insert, with the policy named in the audit trail; the clinician's approval is refused (`ORA-20012`) |
 | Doctor | `DA_PHYSICIAN`, the web application | the only identity that may decide what a policy reserves for a physician; on approval the medication row records the physician order |
 | Execute | `DECIDE_CARE_ACTION` (definer rights) | creates the `lab_order`, queues the `patient_message` (a simulated portal outbox), or requests the `appointment`; one transaction; `care_action_event` keeps the audit trail |
 
@@ -77,12 +87,15 @@ back; the clinician never saw it.
    from the session, not from the row.
 4. The lead delegates the escalation to the `medication-safety` agent, which
    re-reads the labs and the reference and proposes the change on the
-   escalation, or declines it.
+   escalation, or declines it with a cited reason.
 5. Policy `CP-02` stores the proposal as `needs_physician`: the clinician's
    approval is refused (`ORA-20012`); the doctor's approval executes it.
 
-The gate rejects a brief unless the run proposed at least two actions and
-resolved its escalation, so every run shows the chain. The web app draws it
+The gate rejects a brief unless the run proposed at least two actions,
+resolved its escalation, and produced a medication change for the doctor. That
+last condition is a demo choice, so every run shows the whole chain; a
+declined escalation sends the brief back for another concern. In production
+you would accept a reasoned decline. The web app draws it
 above the action cards; `scripts/verify.py --rls-only` and
 `scripts/demo_e2e.py` assert it.
 
@@ -138,8 +151,8 @@ Following the persistence pattern in langchain-oracle's Deep Agents guide,
 `memory=["/memories/patient-history.md"]` loaded into the system prompt.
 Both live in the agent user's own schema. The agent reads its memory and
 cannot write it (`permissions=`): the runner records each accepted brief and
-the web application records each clinician decision, so the next brief knows
-what was approved, executed, or rejected.
+the web application records each decision, the clinician's or the doctor's,
+so the next brief knows what was approved, executed, or rejected.
 
 ## Watch the agents work
 
@@ -188,6 +201,25 @@ In every run the care coordinator tried a medication change, the database refuse
 | ![Brief](docs/screenshots/03-brief.png) | ![Actions](docs/screenshots/04-actions.png) |
 | ![Memory](docs/screenshots/05-memory.png) | ![Trace](docs/screenshots/06-inspect-trace.png) |
 
+## How agentic is it
+
+| The models decide | The design fixes |
+|---|---|
+| the plan, and when to re-delegate a thin answer | the team: five specialists, in a set order |
+| every SQL query and every search (9 to 16 distinct queries and 14 to 25 searches per brief) | the tools each agent holds, and what each tool may write |
+| which medication concern matters most for this patient | that a medication change is attempted, and escalated when refused |
+| whether the escalation is sound: the medication-safety agent re-reads the chart and may decline | that a person approves every action, and a doctor every medication change |
+| the brief's content, every claim with a source | that the gate checks every source id before anyone reads it |
+
+The models also make mistakes, and the system catches them. In one recorded
+run ([Codex run 4](evidence/codex/codex-run4-2026-10-05.log)) the care
+coordinator said it had escalated without calling the tool, and the lead
+passed on an id that did not exist; the gate found no escalation in the
+database and sent the brief back, and on the repair the coordinator opened a
+real one. Elsewhere a researcher came back thin and was asked again, and a
+draft cited PubMed ids no search had returned. Autonomy inside a fixed
+workflow, checked by the database and the gate, is the point of the design.
+
 ## How it is built
 
 | Piece | With |
@@ -225,8 +257,9 @@ gateway running, and Codex signed in:
 ```shell
 git clone https://github.com/fede-kamel/deep-agents-oracle-ai-database
 cd deep-agents-oracle-ai-database
-codex -c sandbox_workspace_write.network_access=true \
+codex -s workspace-write -c sandbox_workspace_write.network_access=true \
   --add-dir ~/.config/openshell --add-dir ~/.config/deepagents-oracle-health \
+  --add-dir ~/.rd --add-dir ~/.cache/uv --add-dir ~/.local/share/uv --add-dir ~/.npm \
   "$(cat codex/PROMPT.md)"
 ```
 
@@ -289,15 +322,16 @@ uv run uvicorn ui.server:app --host 127.0.0.1 --port 8765   # open http://127.0.
 
 | Path | Purpose |
 |---|---|
-| `agent/` | prompts, SQL tools, guards, `PreVisitBrief`, verifier, runner |
-| `migrations/` | Alembic: schema, vectors, benchmark, row-level security |
-| `db/` | ADMIN setup (operator), seed, in-database embedding |
+| `agent/` | the Deep Agent: prompts, SQL tools, care-action and escalation tools, guards, memory, `PreVisitBrief`, verifier, runner |
+| `migrations/` | Alembic 0001-0008: schema, vectors, benchmark, row-level security, note ids, care actions, care and agent policies |
+| `db/` | ADMIN setup (operator), seed, in-database embedding, demo reset |
 | `data/` | synthetic patients X, Y, Z; background cohort; public reference loaders |
 | `sandbox/` | image, provider profile, sandbox policy |
-| `scripts/` | preflight, setup, sandbox run, safety probe, verify, teardown, operator steps |
-| `ui/`, `web/` | the web application |
-| `docs/figures/` | seven figures, generated by `docs/figures-src/gen.py` |
-| `evidence/` | event logs, consoles, briefs, probe and verify transcripts |
+| `scripts/` | preflight, setup, sandbox run, safety probe, verify, the end-to-end demo test, the web app check, teardown, operator steps |
+| `ui/`, `web/` | the web application; `web/scripts/ui-e2e.mjs` clicks through it in a real browser |
+| `docs/figures/` | ten figures, generated by `docs/figures-src/gen.py` |
+| `docs/screenshots/` | the web application, captured from real runs |
+| `evidence/` | the end-to-end flow, event logs, consoles, briefs, verify and probe transcripts, Codex runs |
 | `codex/` | the specification and the prompt |
 
 ---

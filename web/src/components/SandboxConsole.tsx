@@ -4,6 +4,8 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "reac
 
 type Filter = "all" | "agents" | "network" | "lifecycle";
 
+// The console carries ANSI colour codes from OpenShell; matching ESC is the point.
+// oxlint-disable-next-line no-control-regex
 const ANSI_TOKEN = /\x1b\[([0-9;]*)m/g;
 const SGR: Record<string, string> = {
   "1": "font-semibold",

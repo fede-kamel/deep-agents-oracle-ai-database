@@ -7,6 +7,11 @@ stdout carries the agent's JSON events, stderr carries the sandbox console
 (the OpenShell commands and the gateway's live log, including every network
 decision). It never holds the OCI Generative AI key: the gateway does.
 
+It also serves the care-action workflow: the proposals, decided as the
+clinician (DA_CLINICIAN) or the doctor (DA_PHYSICIAN) through the database's
+DECIDE_CARE_ACTION; the escalations and policy log; each patient's memory;
+and the demo reset, which stops any run first.
+
     uv run uvicorn ui.server:app --port 8765
 """
 
@@ -303,7 +308,7 @@ async def safety() -> dict:
         ],
         "binary": "/usr/local/bin/python3.12",
         "everything_else": "no rule, so no connection opens",
-        "chat_model": cfg.get("chat_model", "google.gemini-2.5-pro"),
+        "chat_model": cfg.get("chat_model", "openai.gpt-5.5"),
         "worker_model": cfg.get("worker_model", "google.gemini-2.5-flash"),
     }
 

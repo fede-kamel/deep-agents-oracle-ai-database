@@ -24,7 +24,6 @@ function Step({ tone, icon: Icon, who, what }: { tone: string; icon: typeof Ban;
  * database (policy_event, agent_escalation, care_action). */
 export function PolicyChain({ patientKey, actions, refreshKey }: { patientKey: string; actions: CareAction[]; refreshKey: unknown }) {
   const [log, setLog] = useState<{ escalations: Escalation[]; events: PolicyEvent[] }>({ escalations: [], events: [] });
-  useEffect(() => { setLog({ escalations: [], events: [] }); }, [patientKey]);
   useEffect(() => {
     let current = true;
     fetch(`/api/patients/${patientKey}/policy`).then((r) => (r.ok ? r.json() : null)).then((d) => current && d && setLog(d)).catch(() => undefined);

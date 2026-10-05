@@ -1,6 +1,6 @@
 """Reset the demo to a clean slate: care actions, their audit trail, the lab
-orders, portal messages and appointment requests they produced, the agents'
-escalations and the policy log, each
+orders, portal messages and appointment requests they produced, physician
+orders on medications, the agents' escalations and the policy log, each
 patient's long-term memory, and the agents' checkpoints. The chart itself, the
 reference stores and every configuration are untouched.
 
