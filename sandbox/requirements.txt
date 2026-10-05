@@ -1,0 +1,10 @@
+# Runtime dependencies of the agent inside the sandbox. Baked into the image so
+# the sandbox needs no package-registry egress at run time.
+langchain-oci==0.3.2
+langchain-oracledb==1.6.0
+langchain-openai==1.6.7
+langchain-community==0.4.2
+langchain==1.4.3
+deepagents==0.7.21
+oracledb==3.4.2
+sqlalchemy==2.1.3

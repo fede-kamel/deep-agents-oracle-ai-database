@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+out/
+web/node_modules/
+web/dist/
+.DS_Store
+*.log.tmp
+# local operator files never belong in the repository
+config.json
+secrets/
+*.env
