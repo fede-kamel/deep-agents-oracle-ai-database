@@ -32,6 +32,16 @@ PATIENTS: dict[str, dict] = {
         "sex": "male",
         "situation": "Type 2 diabetes with declining kidney function",
         "visit_reason": "Routine diabetes follow-up in two weeks",
+        "narrative": (
+            "Alex is a 61-year-old warehouse worker with type 2 diabetes since 2014, hypertension "
+            "and a painful right knee. Eighteen months ago his kidneys were working normally; since "
+            "then his eGFR has fallen from 68 to 47 and protein in his urine has risen sevenfold, while "
+            "his HbA1c has crept from 7.4% to 8.6%. A new job with long shifts broke his meal routine: "
+            "he now has afternoon low-sugar spells on glipizide and takes over-the-counter ibuprofen most "
+            "days for his knee, despite advice to cut back. His eye screening has been open since March "
+            "2025, and no urine albumin test was drawn in the last lab cycle. He has asked whether he can "
+            "drop the afternoon glipizide dose before the visit."
+        ),
         "question": (
             "Prepare a pre-visit brief for Patient X's diabetes follow-up. "
             "What has changed in kidney function, which medications deserve "
@@ -122,6 +132,16 @@ PATIENTS: dict[str, dict] = {
         "sex": "female",
         "situation": "Heart failure, readmitted twice in 90 days",
         "visit_reason": "Post-discharge heart failure clinic visit in one week",
+        "narrative": (
+            "Jordan is a 72-year-old retired teacher who lives alone with heart failure (ejection "
+            "fraction 30%), coronary disease, stage 3a kidney disease and diabetes. She has been admitted "
+            "three times since June, twice within 90 days. She skips her afternoon water tablet on days "
+            "she takes the bus, struggles to pay for eight medicines, and declined home nursing because "
+            "of cost. At her last admission her potassium was 5.6 on spironolactone, lisinopril and a "
+            "potassium supplement; the supplement was held, then reappeared on her discharge list. Ten "
+            "days after discharge she phoned in 3.1 kg heavier, with new ankle swelling and needing two "
+            "pillows to sleep, and asked whether the clinic could arrange transport."
+        ),
         "question": (
             "Prepare a pre-visit brief for Patient Y's post-discharge heart "
             "failure visit. Why does she keep being readmitted, what is "
@@ -211,6 +231,16 @@ PATIENTS: dict[str, dict] = {
         "sex": "female",
         "situation": "COPD with polypharmacy and a recent fall",
         "visit_reason": "Annual wellness visit with medication review in ten days",
+        "narrative": (
+            "Morgan is a 79-year-old with severe COPD (FEV1 48%), osteoporosis, an overactive bladder, "
+            "insomnia and anxiety, taking ten medicines from several prescribers. In May an urgent-care "
+            "visit added a second anticholinergic inhaler on top of her existing one, without "
+            "reconciliation. For sleep she takes zolpidem and, when that is not enough, an over-the-counter "
+            "diphenhydramine. In August she fell in her kitchen at 3 a.m. on the way to the bathroom, feeling "
+            "'groggy' after her bedtime pills; standing blood pressure dropped 20 mmHg. Her inhaler technique "
+            "is poor, she has had three steroid courses in a year, pulmonary rehab was declined for lack of "
+            "transport, and her pharmacist has asked for a prescriber review."
+        ),
         "question": (
             "Prepare a pre-visit brief for Patient Z's medication review. Which "
             "medications add to fall risk or duplicate each other, how is her COPD "

@@ -1,0 +1,158 @@
+$ openshell sandbox create --name brief-x-135611 --from deepagents-oracle-health:0.1 --provider deepagents-genai --policy policy.yaml --label app=deepagents-oracle-health --detach
+
+Created sandbox: brief-x-135611
+
+  [0.0s] Requesting compute...
+[0.0s] Sandbox allocated
+[0.0s] Pulling image deepagents-oracle-health:0.1
+[0.0s] Image already present
+[0.1s] Starting sandbox Container created
+$ waiting for the sandbox's first policy reload
+$ openshell sandbox upload brief-x-135611 app/ /sandbox/app   (agent code)
+Uploading /var/folders/88/0g9ll1cs3v16dfzk1_5l4mww0000gp/T/tmp.fboBhRQh32/app -> sandbox:/sandbox
+✓ Upload complete
+$ openshell sandbox upload brief-x-135611 secrets/ /sandbox/secrets   (0600 db.env, not shown)
+Uploading /var/folders/88/0g9ll1cs3v16dfzk1_5l4mww0000gp/T/tmp.fboBhRQh32/secrets -> sandbox:/sandbox
+✓ Upload complete
+$ openshell sandbox exec --name brief-x-135611 -- python3.12 -m agent.run --patient X
+[openshell] [1791222972.198] [gateway] [INFO ] [openshell_server::grpc::sandbox] CreateSandbox request completed successfully
+[openshell] [1791222972.631] [sandbox] [INFO ] [openshell_supervisor] Starting sandbox supervision command=["sleep", "infinity"]
+[openshell] [1791222972.642] [gateway] [INFO ] [openshell_server::grpc::policy] GetSandboxConfig served from spec (backfilled version 1)
+[openshell] [1791222972.664] [gateway] [INFO ] [openshell_server::grpc::policy] GetSandboxProviderEnvironment request completed successfully
+[openshell] [1791222972.697] [gateway] [INFO ] [openshell_server::supervisor_session] supervisor session: accepted
+[openshell] [1791222972.700] [gateway] [INFO ] [openshell_server::grpc::policy] ReportPolicyStatus: sandbox reported policy load result
+[openshell] [1791222972.752] [gateway] [INFO ] [openshell_server::supervisor_session] supervisor session: relay opened successfully
+[openshell] [1791222972.752] [gateway] [INFO ] [openshell_server::supervisor_session] relay stream: claimed pending relay, bridging
+[openshell] [1791222972.752] [gateway] [INFO ] [openshell_server::grpc::sandbox] ExecSandbox (relay): command started
+[openshell] [1791222972.682] [sandbox] [INFO ] [openshell_supervisor] Fetching sandbox policy via gRPC endpoint=https://host.docker.internal:17670 sandbox=brief-x-135611 sandbox_id=474bd24f-ae3e-471f-ba7e-3874d603266f
+[openshell] [1791222972.696] [sandbox] [OCSF ] [ocsf] CONFIG:ENRICHED [INFO] Enriched policy with baseline filesystem paths for proxy mode
+[openshell] [1791222972.710] [sandbox] [INFO ] [openshell_supervisor_network::opa] Configured OPA runtime binary identity mode require_binary_identity=true source=proto
+[openshell] [1791222972.710] [sandbox] [OCSF ] [ocsf] CONFIG:CONFIGURED [INFO] OPA runtime binary identity mode configured [source:proto require_binary_identity:true] [source:proto]
+[openshell] [1791222972.722] [sandbox] [INFO ] [openshell_supervisor] Isolation boundary attached backend=openshell-sandbox
+[openshell] [1791222972.722] [sandbox] [INFO ] [openshell_supervisor] Isolation boundary enforcement confirmed backend=openshell-sandbox
+[openshell] [1791222972.723] [sandbox] [OCSF ] [ocsf] CONFIG:ENABLED [INFO] TLS termination enabled: ephemeral CA generated
+[openshell] [1791222972.723] [sandbox] [OCSF ] [ocsf] CONFIG:READY [INFO] Policy DNS connected to isolation boundary
+[openshell] [1791222972.723] [sandbox] [OCSF ] [ocsf] NET:LISTEN [INFO] 127.0.0.1:3128
+[openshell] [1791222972.734] [sandbox] [INFO ] [openshell_supervisor] Isolation boundary agent started backend=openshell-sandbox
+[openshell] [1791222972.735] [sandbox] [OCSF ] [ocsf] SSH:LISTEN [INFO]
+[openshell] [1791222972.745] [sandbox] [OCSF ] [ocsf] CONFIG:LOADED [INFO] Acknowledged initial policy revision as loaded [version:2] [hash:0bd675a06f2e8ef199a0bb3e88ef75166f6d8c52b568cfdbfea9e71287571b35]
+[openshell] [1791222972.746] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] host.docker.internal:17670
+[openshell] [1791222972.746] [sandbox] [INFO ] [openshell_supervisor] Control-mode access plane started backend=openshell-sandbox
+[openshell] [1791222972.797] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay open (channel_id=f8ac147d-dcf8-4173-910c-d46652db145e, target=unix:/run/openshell/ssh.sock)
+[openshell] [1791222972.797] [sandbox] [OCSF ] [ocsf] SSH:OPEN [INFO] ALLOWED
+[openshell] [1791222972.819] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay closed (channel_id=f8ac147d-dcf8-4173-910c-d46652db145e, target=unix:/run/openshell/ssh.sock)
+[openshell] [1791222982.706] [gateway] [INFO ] [openshell_server::grpc::policy] GetSandboxProviderEnvironment request completed successfully
+[openshell] [1791222982.746] [sandbox] [OCSF ] [ocsf] CONFIG:DETECTED [INFO] Settings poll: config change detected [old_revision:9493124740080151334 new_revision:9493124740080151334 policy_changed:false provider_env_changed:true]
+[openshell] [1791222982.752] [sandbox] [INFO ] [openshell_supervisor_network::opa] Configured OPA runtime binary identity mode require_binary_identity=true source=proto
+[openshell] [1791222982.752] [sandbox] [OCSF ] [ocsf] CONFIG:CONFIGURED [INFO] OPA runtime binary identity mode configured [source:proto require_binary_identity:true] [source:proto]
+[openshell] [1791222983.402] [gateway] [INFO ] [openshell_server::supervisor_session] supervisor session: relay opened successfully
+[openshell] [1791222983.402] [gateway] [INFO ] [openshell_server::supervisor_session] relay stream: claimed pending relay, bridging
+[openshell] [1791222983.518] [gateway] [INFO ] [openshell_server::supervisor_session] supervisor session: relay opened successfully
+[openshell] [1791222983.518] [gateway] [INFO ] [openshell_server::supervisor_session] relay stream: claimed pending relay, bridging
+[openshell] [1791222983.584] [gateway] [INFO ] [openshell_server::supervisor_session] supervisor session: relay opened successfully
+[openshell] [1791222983.584] [gateway] [INFO ] [openshell_server::supervisor_session] relay stream: claimed pending relay, bridging
+[openshell] [1791222983.584] [gateway] [INFO ] [openshell_server::grpc::sandbox] ExecSandbox (relay): command started
+[openshell] [1791222983.446] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay open (channel_id=1ccd1150-6d5a-4765-a324-dc3beca1f67f, target=unix:/run/openshell/ssh.sock)
+[openshell] [1791222983.446] [sandbox] [OCSF ] [ocsf] SSH:OPEN [INFO] ALLOWED
+[openshell] [1791222983.464] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay closed (channel_id=1ccd1150-6d5a-4765-a324-dc3beca1f67f, target=unix:/run/openshell/ssh.sock)
+[openshell] [1791222983.562] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay open (channel_id=d1ce1eb3-ab2d-4102-8a38-526677e05e32, target=unix:/run/openshell/ssh.sock)
+[openshell] [1791222983.562] [sandbox] [OCSF ] [ocsf] SSH:OPEN [INFO] ALLOWED
+[openshell] [1791222983.578] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay closed (channel_id=d1ce1eb3-ab2d-4102-8a38-526677e05e32, target=unix:/run/openshell/ssh.sock)
+[openshell] [1791222983.628] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay open (channel_id=ff91579c-950d-4fce-9712-94fd7d53476d, target=unix:/run/openshell/ssh.sock)
+[openshell] [1791222983.629] [sandbox] [OCSF ] [ocsf] SSH:OPEN [INFO] ALLOWED
+[openshell] [1791222987.946] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=2d168735-87ca-442f-80ec-cceca2b3403f
+[openshell] [1791222987.996] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791222988.255] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=12d10308-7928-4a6b-aeee-5ac8c22fe003
+[openshell] [1791222988.303] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791222988.557] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=e9c401eb-6af1-4a43-8d66-cf38bebe786c
+[openshell] [1791222988.607] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791222989.447] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=6763bf9b-963e-4383-b4d3-2a27fd3c366c
+[openshell] [1791222989.494] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791222992.729] [sandbox] [INFO ] [openshell_supervisor] Flushed activity summary to gateway denied_action_count=0 network_activity_count=4 sandbox_name=brief-x-135611
+[openshell] [1791222992.831] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=274abb11-b052-4d38-b883-26fb9bfc2d4d
+[openshell] [1791222992.882] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+ADB metadata.id index IDX_PATIENT_NOTE_VEC_MID could not be created: ORA-41900: missing INDEX privilege on "DA_OWNER"."PATIENT_NOTE_VEC"
+Help: https://docs.oracle.com/error-help/db/ora-41900/. Lookups by document id will full-scan PATIENT_NOTE_VEC.
+[openshell] [1791222994.349] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=6f61f46a-5f90-453a-9800-2dd752786424
+[openshell] [1791222994.398] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+ADB metadata.id index IDX_CLINICAL_REFERENCE_MID could not be created: ORA-41900: missing INDEX privilege on "DA_OWNER"."CLINICAL_REFERENCE"
+Help: https://docs.oracle.com/error-help/db/ora-41900/. Lookups by document id will full-scan CLINICAL_REFERENCE.
+[openshell] [1791222995.078] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=82ed1e8f-c478-4762-a00a-b8f8f54848aa
+[openshell] [1791222995.129] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+ADB metadata.id index IDX_RESEARCH_EVIDENCE_MID could not be created: ORA-41900: missing INDEX privilege on "DA_OWNER"."RESEARCH_EVIDENCE"
+Help: https://docs.oracle.com/error-help/db/ora-41900/. Lookups by document id will full-scan RESEARCH_EVIDENCE.
+/sandbox/app/agent/run.py:173: UserWarning: Parameters {'max_completion_tokens'} should be specified explicitly. Instead they were passed in as part of `model_kwargs` parameter.
+  agent, agent_state, cleanup = build_agent(cfg, display_name=profile["display_name"],
+[openshell] [1791222996.234] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=73d73709-d499-464f-b220-cf5f3d038592
+[openshell] [1791222996.282] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791222997.963] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped inference.generativeai.us-chicago-1.oci.oraclecloud.com resolved=64.181.150.234 synthetic=198.18.0.3 ports=443 mapping_id=f0cdc12a-6b6a-4458-abaf-fd81238a90a1
+[openshell] [1791222998.006] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> inference.generativeai.us-chicago-1.oci.oraclecloud.com:443 [policy:_provider_deepagents_genai engine:opa]
+[openshell] [1791222998.084] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223002.728] [sandbox] [INFO ] [openshell_supervisor] Flushed activity summary to gateway denied_action_count=0 network_activity_count=4 sandbox_name=brief-x-135611
+[openshell] [1791223002.795] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223009.674] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223014.930] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223067.434] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=2f4a8ea8-fa6e-4d88-9250-c495bfef0736
+[openshell] [1791223067.434] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=50685660-8d00-4d9e-9e92-1de070ff9a17
+[openshell] [1791223067.435] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=932149ea-0f61-4149-97bd-0bc22086be8e
+[openshell] [1791223067.486] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223067.486] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223067.488] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223067.951] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=d79af8f3-5ed8-4c27-a66a-1d02736c207c
+[openshell] [1791223068.004] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223068.352] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223072.729] [sandbox] [INFO ] [openshell_supervisor] Flushed activity summary to gateway denied_action_count=0 network_activity_count=4 sandbox_name=brief-x-135611
+[openshell] [1791223087.916] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223091.580] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223102.046] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223102.432] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped inference.generativeai.us-chicago-1.oci.oraclecloud.com resolved=64.181.150.234 synthetic=198.18.0.3 ports=443 mapping_id=5b828241-716b-42fc-b8b0-47d21524ad30
+[openshell] [1791223102.478] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> inference.generativeai.us-chicago-1.oci.oraclecloud.com:443 [policy:_provider_deepagents_genai engine:opa]
+[openshell] [1791223102.523] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223105.417] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223106.105] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223111.399] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223122.898] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223123.234] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped inference.generativeai.us-chicago-1.oci.oraclecloud.com resolved=64.181.150.234 synthetic=198.18.0.3 ports=443 mapping_id=17fd791c-565b-4529-8ab7-1724753e7d81
+[openshell] [1791223123.275] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> inference.generativeai.us-chicago-1.oci.oraclecloud.com:443 [policy:_provider_deepagents_genai engine:opa]
+[openshell] [1791223123.315] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223125.351] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223126.330] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223128.183] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223129.758] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223131.904] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223132.966] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223134.728] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223137.081] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223139.937] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223142.354] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223144.601] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223146.976] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223149.164] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223159.536] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223162.263] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223163.929] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223166.886] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223169.842] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223170.975] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223176.418] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223183.348] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223194.352] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223201.440] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=78b37866-7f07-455a-8604-605cd76865d7
+[openshell] [1791223201.495] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223201.848] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223202.727] [sandbox] [INFO ] [openshell_supervisor] Flushed activity summary to gateway denied_action_count=0 network_activity_count=1 sandbox_name=brief-x-135611
+[openshell] [1791223215.686] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=fb464618-cfb8-4b20-9ac3-0975c2c735b6
+[openshell] [1791223215.686] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=71a99c91-f07b-4889-852d-830980d46c2b
+[openshell] [1791223215.686] [sandbox] [OCSF ] [ocsf] CONFIG:PUBLISHED [INFO] Policy DNS mapped adb.ca-toronto-1.oraclecloud.com resolved=192.29.69.37 synthetic=198.18.0.2 ports=1521 mapping_id=1158e32c-ab3a-4da4-ac79-42d6c57a2eef
+[openshell] [1791223215.744] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223215.744] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223215.744] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[openshell] [1791223216.192] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223222.727] [sandbox] [INFO ] [openshell_supervisor] Flushed activity summary to gateway denied_action_count=0 network_activity_count=3 sandbox_name=brief-x-135611
+[openshell] [1791223225.459] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223235.081] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+[openshell] [1791223243.849] [sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_deepagents_genai engine:l7]
+Deserializing unregistered type agent.brief_schema.PreVisitBrief from checkpoint. This will be blocked in a future version. Set LANGGRAPH_STRICT_MSGPACK=true to block now, or add to allowed_msgpack_modules to allow explicitly: [('agent.brief_schema', 'PreVisitBrief')]
+[openshell] [1791223299.759] [sandbox] [OCSF ] [ocsf] EVENT [INFO] ssh relay closed (channel_id=ff91579c-950d-4fce-9712-94fd7d53476d, target=unix:/run/openshell/ssh.sock)
+$ openshell sandbox delete brief-x-135611
+✓ Sandbox brief-x-135611 deletion accepted; cleanup is pending

@@ -10,3 +10,9 @@ web/dist/
 config.json
 secrets/
 *.env
+
+# decks are built from a corporate template; they stay out of the public repo
+deck/*.pptx
+deck/*.pdf
+.cache/
+.tmp/

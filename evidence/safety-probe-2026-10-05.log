@@ -1,0 +1,20 @@
+PASS  key in the sandbox is a placeholder      openshell:resolve:...
+PASS  OCI GenAI chat completion                HTTP 200 (proxy swapped the placeholder)
+PASS  Oracle AI Database listener              TCP adb.ca-toronto-1.oraclecloud.com:1521 opened
+PASS  refused: unlisted host                   example.com -> PermissionError: [Errno 13] Permission denied
+PASS  refused: OCI Object Storage API          objectstorage.us-chicago-1.oraclecloud.com -> PermissionError: [Errno 13] Permission denied
+PASS  refused: package registry                pypi.org -> PermissionError: [Errno 13] Permission denied
+PASS  refused: PUT on the allowed host         HTTP 403 (method not in the rules)
+
+PROBE OK (7/7)
+
+gateway decisions for this sandbox:
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] host.docker.internal:17670
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> inference.generativeai.us-chicago-1.oci.oraclecloud.com:443 [policy:_provider_deepagents_
+[sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_dee
+[sandbox] [OCSF ] [ocsf] NET:OPEN [MED] DENIED /usr/local/bin/python3.12(0) -> example.com:443 [reason:transparent_tcp_policy_denied]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [MED] DENIED /usr/local/bin/python3.12(0) -> objectstorage.us-chicago-1.oraclecloud.com:443 [reason:transparent_tcp_policy_denied]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [MED] DENIED /usr/local/bin/python3.12(0) -> pypi.org:443 [reason:transparent_tcp_policy_denied]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> inference.generativeai.us-chicago-1.oci.oraclecloud.com:443 [policy:_provider_deepagents_
+[sandbox] [OCSF ] [ocsf] HTTP:PUT [MED] DENIED PUT http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/models [policy:_provider_deepagents_genai 

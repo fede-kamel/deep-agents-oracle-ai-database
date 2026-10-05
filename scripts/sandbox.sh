@@ -64,6 +64,7 @@ run() {
       printf 'DA_DSN=%q\n' "$(cfg dsn)"
       printf 'DA_DB_PASSWORD=%q\n' "$(cat "$SECRETS/DA_AGENT_$key")"
       printf 'DA_GENAI_REGION=%q\n' "$(cfg genai_region)"
+      printf 'DA_RUN_ID=%q\n' "${DA_RUN_ID:-cli-$(date +%Y%m%d-%H%M%S)}"
       printf 'DA_CHAT_MODEL=%q\n' "$(cfg chat_model)"
       printf 'DA_WORKER_MODEL=%q\n' "$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('worker_model','google.gemini-2.5-flash'))" "$CONFIG")"
     } >"$work/secrets/db.env"

@@ -42,7 +42,8 @@ ONNX_DIR_URI = (
     "n/adwc4pm/b/OML-ai-models/o/"
 )
 ONNX_FILE = "all_MiniLM_L12_v2.onnx"
-DEMO_USERS = [OWNER] + [agent_user(k) for k in PATIENT_KEYS]
+CLINICIAN = "DA_CLINICIAN"  # approves care actions in the web application
+DEMO_USERS = [OWNER, CLINICIAN] + [agent_user(k) for k in PATIENT_KEYS]
 
 
 def new_password() -> str:
@@ -97,13 +98,19 @@ def setup(cur) -> None:
 
     for key in PATIENT_KEYS:
         user = agent_user(key)
-        # CREATE SESSION only: no CREATE TABLE, no quota. The agent user can
-        # read what the owner grants it and change nothing; which rows it
-        # can read is decided by the row-level security policy.
-        cur.execute(f"GRANT CREATE SESSION TO {user}")
+        # The agent user reads the chart (SELECT grants from migration 0004),
+        # proposes care actions (INSERT on care_action, migration 0006), and
+        # keeps its own working state: LangGraph checkpoints and long-term
+        # memory (langgraph-oracledb) in its own schema, under a small quota.
+        # It can change nothing in DA_OWNER's schema.
+        cur.execute(f"GRANT CREATE SESSION, CREATE TABLE TO {user}")
+        cur.execute(f"ALTER USER {user} QUOTA 64M ON DATA")
         for table in VECTOR_TABLES:
             run(cur, f"DROP SYNONYM {user}.{table}", ignore=(1434,))
             cur.execute(f"CREATE SYNONYM {user}.{table} FOR {OWNER}.{table}")
+    # The clinician may sign in and nothing more until migration 0006 grants
+    # EXECUTE on DECIDE_CARE_ACTION and SELECT on the workflow tables.
+    cur.execute(f"GRANT CREATE SESSION TO {CLINICIAN}")
     print("  grants and vector-table synonyms in place")
 
 

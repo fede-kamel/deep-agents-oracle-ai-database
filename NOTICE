@@ -1,0 +1,20 @@
+Deep Agents on your own data
+Copyright 2026 Federico Kamelhar
+
+This repository is personal open-source work. It is not an Oracle publication.
+
+Third-party material:
+
+- sandbox/profile/oci-genai-python.yaml is derived from providers/oci-genai.yaml
+  in NVIDIA/OpenShell, Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES,
+  licensed under the Apache License, Version 2.0.
+- Reference text loaded at run time (not redistributed here, except short
+  excerpts quoted in evidence/briefs): MedQuAD, Ben Abacha and Demner-Fushman,
+  "A Question-Entailment Approach to Question Answering", BMC Bioinformatics
+  2019, CC BY 4.0; PubMedQA, Jin et al., EMNLP 2019, MIT License.
+- The all-MiniLM-L12-v2 ONNX model is downloaded from Oracle's published
+  location at setup time; it is not redistributed here.
+- Logos in docs/figures-src/logos are trademarks of their owners (Oracle,
+  NVIDIA, LangChain, OpenAI, Google) and are used to identify the products.
+
+All patient records in data/ are synthetic and invented for this demo.

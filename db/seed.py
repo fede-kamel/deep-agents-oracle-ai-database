@@ -29,6 +29,9 @@ CHILD_TABLES = (
 )
 
 
+NOTE_SEQ = [0]
+
+
 def d(value: str | None):
     return date.fromisoformat(value) if value else None
 
@@ -74,10 +77,13 @@ def insert_patient(cur, p: dict) -> None:
             [pid, d(on), kind, setting, enc_id],
         )
         if len(enc) > 3:
+            # Explicit, deterministic note ids: a re-seed reproduces the same
+            # SYN-<P>-NOTE-nnnn ids, so published briefs keep resolving.
+            NOTE_SEQ[0] += 1
             cur.execute(
-                "INSERT INTO clinical_note (patient_id, encounter_id, note_date, kind, body) "
-                "VALUES (:1, :2, :3, :4, :5)",
-                [pid, int(enc_id.getvalue()[0]), d(on), kind, enc[3]],
+                "INSERT INTO clinical_note (id, patient_id, encounter_id, note_date, kind, body) "
+                "VALUES (:1, :2, :3, :4, :5, :6)",
+                [NOTE_SEQ[0], pid, int(enc_id.getvalue()[0]), d(on), kind, enc[3]],
             )
     for kind, opened, status, detail in p.get("referrals", []):
         cur.execute(
@@ -168,6 +174,7 @@ def main() -> None:
         cur.execute("DELETE FROM patient WHERE patient_id LIKE 'SYN-%'")
         cur.execute("DELETE FROM cohort_benchmark")
 
+        NOTE_SEQ[0] = 0
         for key, p in PATIENTS.items():
             insert_patient(cur, p)
         cohort = generate()

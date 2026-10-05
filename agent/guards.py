@@ -26,14 +26,13 @@ def other_patient_pattern(patient_id: str) -> str:
 
 
 def guard_middleware(patient_id: str) -> list:
-    blocks = [PIIMiddleware("email", strategy="block", apply_to_input=True)]
-    for name, pattern in IDENTIFIER_SHAPES.items():
-        blocks.append(PIIMiddleware(name, detector=pattern, strategy="block", apply_to_input=True))
-    blocks.append(
-        PIIMiddleware("other_patient", detector=other_patient_pattern(patient_id), strategy="block", apply_to_input=True)
-    )
-    redactions = [
-        PIIMiddleware(f"{name}_out", detector=pattern, strategy="redact", apply_to_input=False, apply_to_output=True)
-        for name, pattern in IDENTIFIER_SHAPES.items()
+    """Two middlewares, not one per pattern: every middleware adds graph nodes
+    around each model call, and LangGraph's recursion limit counts them."""
+    identifiers = "|".join(f"(?:{p})" for p in IDENTIFIER_SHAPES.values())
+    email = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
+    blocked = f"{identifiers}|(?:{email})|(?:{other_patient_pattern(patient_id)})"
+    return [
+        PIIMiddleware("identifier_or_other_patient", detector=blocked, strategy="block", apply_to_input=True),
+        PIIMiddleware("identifier_out", detector=f"{identifiers}|(?:{email})", strategy="redact",
+                      apply_to_input=False, apply_to_output=True),
     ]
-    return blocks + redactions

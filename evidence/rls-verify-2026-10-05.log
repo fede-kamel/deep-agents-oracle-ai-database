@@ -1,0 +1,21 @@
+PASS  DA_AGENT_X sees one patient                1 visible (SYN-X)
+PASS  DA_AGENT_X cannot read SYN-Y               0 rows
+PASS  DA_AGENT_X vector notes scoped             1 patient in PATIENT_NOTE_VEC
+PASS  DA_AGENT_X write refused                   ORA-41900
+PASS  DA_AGENT_Y sees one patient                1 visible (SYN-Y)
+PASS  DA_AGENT_Y cannot read SYN-X               0 rows
+PASS  DA_AGENT_Y vector notes scoped             1 patient in PATIENT_NOTE_VEC
+PASS  DA_AGENT_Y write refused                   ORA-41900
+PASS  DA_AGENT_Z sees one patient                1 visible (SYN-Z)
+PASS  DA_AGENT_Z cannot read SYN-X               0 rows
+PASS  DA_AGENT_Z vector notes scoped             1 patient in PATIENT_NOTE_VEC
+PASS  DA_AGENT_Z write refused                   ORA-41900
+PASS  agent proposal is forced to proposed       asked for 'executed', stored proposed by DA_AGENT_X
+PASS  agent cannot propose for SYN-Y             ORA-28115
+PASS  agent cannot approve (UPDATE)              ORA-41900
+PASS  agent cannot execute                       ORA-06550
+PASS  clinician approval executes and audits     executed → LAB_ORDER; proposed>approved>executed
+PASS  schema rejects id without SYN-             ORA-02290
+PASS  schema rejects is_synthetic = 'N'          ORA-02290
+
+VERIFY OK (19/19)

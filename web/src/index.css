@@ -1,111 +1,57 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/600.css";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+/* Redwood-inspired tokens: warm neutrals, Oracle red as the one accent. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-ink: #161513;
+  --color-ink-2: #3f3a36;
+  --color-ink-3: #6f6964;
+  --color-paper: #fbf9f8;
+  --color-panel: #ffffff;
+  --color-line: #e7e2de;
+  --color-sand: #f1efed;
+  --color-oracle: #c74634;
+  --color-oracle-soft: #fbeae7;
+  --color-teal: #2c5967;
+  --color-teal-soft: #e6eff1;
+  --color-moss: #5f7d4f;
+  --color-moss-soft: #edf3e8;
+  --color-ochre: #b07d1f;
+  --color-ochre-soft: #fbf3e2;
+  --color-violet: #6b4fa0;
+  --color-violet-soft: #f0ecf7;
+  --color-term: #121212;
+  --color-term-2: #1b1b1b;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+html, body, #root { height: 100%; }
+body { @apply bg-paper text-ink font-sans antialiased; font-feature-settings: "cv11", "ss01"; }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
+::selection { background: color-mix(in srgb, var(--color-oracle) 22%, transparent); }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+.scroll-thin { scrollbar-width: thin; scrollbar-color: #d6d0cb transparent; }
+.scroll-term { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
 
-body {
-  margin: 0;
-}
+/* The brief: a printed page, not a chat bubble. */
+.brief h1 { @apply text-[22px] font-semibold tracking-tight text-ink mb-2 leading-snug; }
+.brief h2 { @apply text-[13px] font-semibold uppercase tracking-[0.12em] text-oracle mt-6 mb-2; }
+.brief h3 { @apply text-sm font-semibold mt-4 mb-1; }
+.brief p, .brief li { @apply text-[13.5px] leading-[1.65] text-ink-2; }
+.brief ul { @apply list-disc pl-5 space-y-1.5; }
+.brief ol { @apply list-decimal pl-5 space-y-1.5; }
+.brief strong { @apply text-ink font-semibold; }
+.brief blockquote { @apply border-l-[3px] border-oracle bg-oracle-soft/60 px-3 py-2 rounded-r-md my-3 text-[12.5px] text-oracle font-medium; }
+.brief blockquote p { @apply text-oracle text-[12.5px]; }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgb(199 70 52 / .45); } 70% { box-shadow: 0 0 0 7px rgb(199 70 52 / 0); } 100% { box-shadow: 0 0 0 0 rgb(199 70 52 / 0); } }
+.live-dot { animation: pulse-ring 1.6s infinite; }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-}
+.brief table { @apply my-3 w-full border-collapse overflow-hidden rounded-lg text-[12.5px]; }
+.brief thead th { @apply border-b border-line bg-sand px-2.5 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-3; }
+.brief tbody td { @apply border-b border-line/70 px-2.5 py-2 align-top leading-snug text-ink-2; }
+.brief tbody tr:last-child td { @apply border-b-0; }
+.brief h3 { @apply text-[13px] font-semibold text-ink mt-4 mb-1.5; }
