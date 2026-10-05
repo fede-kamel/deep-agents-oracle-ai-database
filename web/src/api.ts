@@ -34,7 +34,7 @@ export type Safety = {
 };
 
 export type AgentEvent = {
-  type: "start" | "plan" | "delegate" | "tool" | "tool_result" | "brief" | "done" | "error" | "blocked" | "verify" | "nudge" | "thought" | "memory" | "checkpoints" | "policy" | "escalation";
+  type: "start" | "plan" | "delegate" | "tool" | "tool_result" | "brief" | "done" | "error" | "blocked" | "verify" | "nudge" | "thought" | "memory" | "checkpoints" | "policy" | "escalation" | "rejected";
   t: number;
   agent?: string;
   [key: string]: unknown;
@@ -68,7 +68,7 @@ export type Lane = {
 export type RunView = {
   id?: string;
   patient?: string;
-  status: "idle" | "starting" | "running" | "succeeded" | "failed" | "blocked";
+  status: "idle" | "starting" | "running" | "succeeded" | "failed" | "blocked" | "rejected";
   meta?: { model?: string; worker_model?: string; db_user?: string; question?: string };
   todos: Todo[];
   lanes: Lane[];
@@ -184,6 +184,8 @@ export function reduce(view: RunView, item: StreamItem): RunView {
     case "error":
     case "blocked":
       return { ...next, status: e.type === "blocked" ? "blocked" : "failed", error: e.message as string };
+    case "rejected":
+      return { ...next, status: "rejected", error: e.message as string };
   }
   return next;
 }

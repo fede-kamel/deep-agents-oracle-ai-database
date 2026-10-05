@@ -379,7 +379,8 @@ async def _execute(run: Run) -> None:
         await asyncio.gather(_pump(run, proc.stdout, "agent", ev), _pump(run, proc.stderr, "console", con))
     code = await proc.wait()
     if run.status != "cancelled":
-        run.status = "succeeded" if code == 0 and run.brief else ("blocked" if code == 2 else "failed")
+        run.status = ("succeeded" if code == 0 and run.brief else "blocked" if code == 2
+                      else "rejected" if code == 3 else "failed")
     if run.brief:
         (run_dir / f"brief-{run.patient}.md").write_text(run.brief)
     await _append(run, {"channel": "status", "status": run.status, "exit_code": code})

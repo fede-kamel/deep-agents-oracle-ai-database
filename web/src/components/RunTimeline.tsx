@@ -252,7 +252,7 @@ export function RunTimeline({ view, question, patientName }: { view: RunView; qu
           )}
           {view.error && (
             <div className="rounded-xl border border-oracle/40 bg-oracle-soft px-4 py-3 text-[12.5px] text-oracle">
-              <span className="font-semibold">{view.status === "blocked" ? "Blocked by the input guard: " : "Run failed: "}</span>
+              <span className="font-semibold">{view.status === "blocked" ? "Blocked by the input guard: " : view.status === "rejected" ? "Rejected by the gate: " : "Run failed: "}</span>
               {view.error}
             </div>
           )}

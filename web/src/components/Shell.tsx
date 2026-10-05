@@ -44,6 +44,8 @@ export function TopBar({ patients, selected, onSelect, disabled, view, safety, o
           <span className="flex items-center gap-1.5 rounded-full bg-oracle px-2.5 py-1 font-semibold text-white"><span className="live-dot size-1.5 rounded-full bg-white" /> agents running</span>
         ) : view.verified?.passed ? (
           <span className="flex items-center gap-1.5 rounded-full bg-moss-soft px-2.5 py-1 font-semibold text-moss"><ShieldCheck className="size-3.5" /> brief verified · {view.verified.citations} citations</span>
+        ) : view.status === "rejected" ? (
+          <span className="flex items-center gap-1.5 rounded-full bg-oracle-soft px-2.5 py-1 font-semibold text-oracle"><ShieldCheck className="size-3.5" /> brief rejected by the gate</span>
         ) : null}
         <span className="flex items-center gap-1.5 rounded-full bg-teal-soft px-2.5 py-1 font-medium text-teal"><Cpu className="size-3.5" /> {safety ? `${safety.chat_model.replace("openai.", "")} + ${safety.worker_model.replace("google.", "")}` : "OCI Generative AI"}</span>
         <span className="rounded-full bg-ink px-2.5 py-1 font-semibold tracking-wide text-white">SYNTHETIC DATA</span>

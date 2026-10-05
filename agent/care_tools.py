@@ -206,6 +206,12 @@ def build_care_tools(dsn: str, user: str, password: str, patient_id: str):
                 if not cur.fetchone()[0]:
                     return ("Refused: nothing was refused to you in this run, so there is nothing to escalate. "
                             "Propose the action yourself; escalate only if the database refuses it.")
+                cur.execute("SELECT MIN(id), MIN(action_id) FROM DA_OWNER.agent_escalation WHERE run_id = :r AND status = 'accepted'",
+                            r=care.run_id)
+                done_esc, done_action = cur.fetchone()
+                if done_esc:
+                    return (f"Refused: escalation {done_esc} in this run is already resolved by the medication-safety "
+                            f"agent (care action {done_action}, waiting for the doctor). Report it; do not escalate again.")
                 cur.execute("SELECT MIN(id) FROM DA_OWNER.agent_escalation WHERE run_id = :r AND status = 'open'", r=care.run_id)
                 pending = cur.fetchone()[0]
                 if pending:

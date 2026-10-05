@@ -279,6 +279,7 @@ def main() -> int:
         # The runner accepts the brief only when it passes the structural and
         # grounding checks; otherwise it hands the problems back, twice at most.
         attempt = 0
+        accepted = False
         for _ in range(MAX_REPAIRS + 1):
             text = rendered(state, profile, cfg)
             issues = verify.problems(text, cfg.patient_id) if text else ["No PreVisitBrief was returned."]
@@ -290,9 +291,10 @@ def main() -> int:
                         "These cited ids do not exist in the database: " + ", ".join(missing)
                         + ". Cite only ids that a specialist's search or query returned; drop or re-source those claims."
                     )
-            emit("verify", agent="runner", passed=not issues, problems=issues,
-                 citations=len(verify.citations(text)) if text else 0, final=not issues)
-            if not issues or _ == MAX_REPAIRS:
+            accepted = not issues
+            emit("verify", agent="runner", passed=accepted, problems=issues,
+                 citations=len(verify.citations(text)) if text else 0, final=accepted or _ == MAX_REPAIRS)
+            if accepted or _ == MAX_REPAIRS:
                 break
             # A fresh thread: continuing after a structured answer leaves an
             # unpaired tool call that the OpenAI-compatible endpoint rejects.
@@ -309,7 +311,7 @@ def main() -> int:
 
     text = rendered(state, profile, cfg)
     structured = state.get("structured")
-    if text and structured is not None and not verify.problems(text, cfg.patient_id):
+    if accepted and structured is not None:
         if isinstance(structured, dict):
             structured = PreVisitBrief.model_validate(structured)
         agent_memory.remember_brief(agent_state["store"], cfg.patient_id, run_id, structured)
@@ -324,8 +326,13 @@ def main() -> int:
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text)
-    emit("brief", patient=cfg.patient_id, markdown=text)
+    emit("brief", patient=cfg.patient_id, markdown=text, accepted=accepted)
     emit("done", seconds=round(time.time() - started, 1), **counts)
+    if not accepted:
+        # The draft stays visible for inspection, but the run is not a success:
+        # nothing reaches memory and the caller sees exit code 3.
+        emit("rejected", message=f"The gate rejected the brief after {MAX_REPAIRS} repairs; see its last problems.")
+        return 3
     return 0
 
 

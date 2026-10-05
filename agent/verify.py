@@ -116,7 +116,7 @@ def action_problems(conn, run_id: str) -> list[str]:
     if not escalations:
         found.append("No escalation was raised: delegate to the care-coordinator to take the chart's most important "
                      "medication-safety concern through propose_medication_change and escalate_to_agent (policy CP-03).")
-    elif escalations.get("open"):
+    elif escalations.get("open") and not kinds.get("medication_change"):
         found.append(f"Escalation {still_open} is still open. Delegate only to the medication-safety agent, with "
                      f"escalation id {still_open}, so it proposes the medication change for the doctor or declines it; "
                      "do not delegate to the care-coordinator again.")

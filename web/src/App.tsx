@@ -243,7 +243,8 @@ export default function App() {
           <StepPage eyebrow="Step 3 · the brief" title={view.brief ? "A brief you can check line by line" : "The brief appears here"}
             lead={<>Every claim carries a chip: a table row, a chart note, the NIH reference, or a PubMed abstract. The gate accepted it only after finding every one of those ids in the database, as this patient's own user.</>}
             primary={{ label: actionCounts.pending ? `Review ${actionCounts.pending} proposed actions` : "Go to actions", onClick: () => setStep("actions") }}
-            secondary={view.verified?.passed ? <span className="flex items-center gap-1.5 text-moss"><ShieldCheck className="size-3.5" /> verified · {view.verified.citations} citations · Word and Markdown export above the document</span> : null}>
+            secondary={view.verified?.passed ? <span className="flex items-center gap-1.5 text-moss"><ShieldCheck className="size-3.5" /> verified · {view.verified.citations} citations · Word and Markdown export above the document</span>
+              : view.status === "rejected" ? <span className="flex items-center gap-1.5 font-semibold text-oracle"><ShieldCheck className="size-3.5" /> rejected by the gate: this draft is shown for inspection only and was not recorded in memory · {view.verified?.problems?.[0] ?? ""}</span> : null}>
             <div className="h-full min-h-[600px]">
               <PanelBoundary><Suspense fallback={null}>
                 <BriefViewer brief={view.brief} runId={view.id} running={running} patientName={runPatient?.display_name} wide />
