@@ -273,7 +273,9 @@ the current code, with the policies and the escalation agent: `PREFLIGHT OK`
 CP-03 refusal → escalation #17 → medication-safety's proposal waiting for the
 doctor, and `WEBAPP OK (7/7)`
 ([log](evidence/codex/codex-run4-2026-10-05.log),
-[report](evidence/codex/codex-run4-report-2026-10-05.md)).
+[report](evidence/codex/codex-run4-report-2026-10-05.md)). The fifth repeated
+it on the final code and passed every check, the Y brief on its first draft
+([report](evidence/codex/codex-run5-report-2026-10-05.md)).
 
 Codex runs the preflight, hands you the two steps that involve a secret (the
 database ADMIN password and the OCI Generative AI key, both typed with

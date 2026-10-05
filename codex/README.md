@@ -40,4 +40,5 @@ which you run in your own terminal.
 | [1](../evidence/codex/codex-run1-report-2026-10-05.md) | full build | stopped at SPEC 7 when the machine's egress IP left the database ACL; reported, no workaround |
 | [2](../evidence/codex/codex-run2-report-2026-10-05.md) | SPEC 4.1 to 5 on the first version | three verified briefs, probe 7/7, every check green |
 | [3](../evidence/codex/codex-run3-webapp-report-2026-10-05.md) | SPEC 4.8 | `WEBAPP OK (7/7)` |
-| [4](../evidence/codex/codex-run4-report-2026-10-05.md) | SPEC 2, 4.6, 4.7 (Y) and 4.8 on the current code | `PREFLIGHT OK` at 0008, `PROBE OK (7/7)`, `VERIFY OK (25/25)`, a Y brief through CP-03 → escalation → medication-safety, `WEBAPP OK (7/7)` |
+| [4](../evidence/codex/codex-run4-report-2026-10-05.md) | SPEC 2, 4.6, 4.7 (Y) and 4.8 after the policies and the escalation agent | `PREFLIGHT OK` at 0008, `PROBE OK (7/7)`, `VERIFY OK (25/25)`, a Y brief through CP-03 → escalation → medication-safety, `WEBAPP OK (7/7)`; one gate repair |
+| [5](../evidence/codex/codex-run5-report-2026-10-05.md) | the same, on the final code (connection retries, honest gate status) | all green; the Y brief passed the gate on the first draft (149 citations), 0 connection retries, `WEBAPP OK (7/7)` |

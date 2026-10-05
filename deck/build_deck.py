@@ -765,9 +765,9 @@ agent = create_deepagents_agent(
         ("Run 1 stopped", "The database refused the laptop's new IP. Codex reported it and stopped; no workaround.", RED),
         ("Run 2 passed", "Full build and three briefs from a clean slate, every check green.", GREEN),
         ("Run 3 passed", "Through the web app: WEBAPP OK, 7 of 7.", GREEN),
-        ("Run 4 passed", "Current code: probe 7/7, database 25/25, Y brief through CP-03 → escalation → doctor, web app 7/7.", GREEN),
+        ("Runs 4–5 passed", "Current code: probe 7/7, database 25/25, Y through CP-03 → escalation → doctor, web app 7/7.", GREEN),
     ], gap=0.22, title_size=12.5, body_size=10)
-    repo(s, "codex/SPEC.md · codex/PROMPT.md · AGENTS.md (hard rules) · evidence/codex/run1-4")
+    repo(s, "codex/SPEC.md · codex/PROMPT.md · AGENTS.md (hard rules) · evidence/codex/run1-5")
     notes(s, "The point of Codex is reproducibility with the same safety posture as the demo: a written spec instead of a README, a coding agent that executes it "
              "under rules it cannot override (AGENTS.md: no secrets, synthetic data only, never decide a care action, never edit code to pass a check), "
              "and transcripts as proof. It is the same method as the OpenShell kill-switch post.")
