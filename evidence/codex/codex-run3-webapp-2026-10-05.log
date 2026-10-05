@@ -1,0 +1,495 @@
+OpenAI Codex v0.159.3
+--------
+workdir: /Users/federico.kamelhar/Projects/deepagents
+model: gpt-5.5
+provider: openai
+approval: on-request
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, /Users/federico.kamelhar/.config/openshell, /Users/federico.kamelhar/.config/deepagents-oracle-health, /Users/federico.kamelhar/.rd, /Users/federico.kamelhar/.cache/uv, /Users/federico.kamelhar/.local/share/uv, /Users/federico.kamelhar/.npm] (network access enabled)
+reasoning effort: high
+reasoning summaries: none
+session id: 01a10d4a-1790-7a01-a796-35409fab7300
+--------
+user
+Operator context. Everything through SPEC 4.7 already passed earlier today; do not repeat it. Run only SPEC 2 (preflight) and SPEC 4.8 (the web application check, patient Y), then report: the preflight result, the full webapp-check table, and whether WEBAPP OK (7/7) was reached. Do not approve or reject any care action.
+
+Build and verify this Deep Agents demo by following `codex/SPEC.md` exactly.
+Read the spec in full before you run anything, and obey `AGENTS.md`.
+
+If I put an "Operator context" block above this prompt, use it as my answers.
+Otherwise ask only for the inputs SPEC section 1 requires and you cannot detect.
+
+Show me the preflight table from SPEC section 2. For the two operator steps
+(SPEC 4.3 and 4.4), hand me the script to run in my own terminal and tell me
+to reply `done` without pasting output; skip a step whose checkpoint already
+passes.
+
+Run SPEC sections 4.5 to 4.8 from the repository root, foreground, with stdin
+from `/dev/null`. If a run prints `ABORT:` or a check fails, match it against
+SPEC section 7 before doing anything else, tell me what happened, and retry at
+most twice.
+
+Verify SPEC section 5, then give me the report in SPEC section 9.
+
+warning: Configured value for `approval_policy` is disallowed by requirements; falling back to required value OnRequest. Details: invalid value for `approval_policy`: `Never` is not in the allowed set [OnRequest, UnlessTrusted] (set by enterprise-managed requirements Codex Developers (8a9cace4-0b4b-4c93-a8d5-b33253d2d6e4))
+codex
+I’ll honor the Operator context as the controlling scope: only SPEC 2 and SPEC 4.8 for patient Y. I’m reading the repository instructions and the full spec first, then I’ll run the two foreground checks with stdin closed.
+exec
+/bin/zsh -lc "sed -n '1,240p' AGENTS.md" in /Users/federico.kamelhar/Projects/deepagents
+exec
+/bin/zsh -lc pwd in /Users/federico.kamelhar/Projects/deepagents
+exec
+/bin/zsh -lc 'wc -l AGENTS.md codex/SPEC.md' in /Users/federico.kamelhar/Projects/deepagents
+exec
+/bin/zsh -lc "sed -n '1,260p' codex/SPEC.md" in /Users/federico.kamelhar/Projects/deepagents
+ succeeded in 100ms:
+# Agent instructions
+
+This repository is a runnable demo: a LangChain Deep Agent, built with
+`langchain-oracle`, writes a pre-visit clinical brief for a synthetic patient
+from Oracle AI Database 26ai, inside an NVIDIA OpenShell sandbox. The
+specification for building and running it is `codex/SPEC.md`; the prompt that
+drives an agent through it is `codex/PROMPT.md`. Read the specification before
+running anything.
+
+## Hard rules
+
+- Secrets. Never ask for, echo, log, or store a password or an API key. The
+  operator runs `scripts/operator/*.sh` in their own terminal for the two steps
+  that need one. Anything that looks like a key or a password in an output is
+  a stop condition. The placeholder `openshell:resolve:env:…` is not a secret.
+- Synthetic data only. Never add, import, or paste real patient data. The
+  schema rejects patient ids without the `SYN-` prefix; do not work around it.
+- Scope. Touch only what the demo created: the `DA_*` users and their objects,
+  the `deepagents-genai` provider, `brief-*` and `probe-*` sandboxes, and the
+  `deepagents-oracle-health` image. Never run `db/setup_admin.py` (ADMIN).
+- Care actions. Never approve or reject a care action yourself; that is the
+  clinician's decision in the web application. You may run `db/reset_workflow.py`
+  only when the operator asks for a clean slate.
+- Integrity. Do not modify `agent/`, `db/`, `migrations/`, `sandbox/` or
+  `scripts/` to make a check pass. Explain and stop instead.
+- Scripts run from the repository root, in the foreground, with `</dev/null`.
+  Every `openshell sandbox exec` needs `</dev/null` on OpenShell 0.1.2.
+
+## Where things are
+
+| Path | Purpose |
+|---|---|
+| `agent/` | the Deep Agent: prompts, SQL and care-action tools, guards, memory, structured brief, runner |
+| `migrations/` | Alembic: clinical schema, vector tables, cohort benchmark, row-level security, citable note ids |
+| `db/` | ADMIN setup (operator), seed, in-database embedding, stats |
+| `data/` | synthetic patients X, Y, Z; background cohort; public reference corpus loaders |
+| `sandbox/` | image, provider profile, sandbox policy |
+| `scripts/` | `preflight.sh`, `setup-data.sh`, `sandbox.sh`, `safety_probe.sh`, `verify.py`, `teardown.sh`, `operator/` |
+| `ui/`, `web/` | the web application: FastAPI backend, React front end |
+| `evidence/` | transcripts behind every claim, identifiers redacted |
+| `codex/` | the specification and the prompt |
+
+## Verifying
+
+- `scripts/preflight.sh </dev/null` ends with `PREFLIGHT OK`.
+- `scripts/safety_probe.sh </dev/null` ends with `PROBE OK (7/7)`.
+- `scripts/sandbox.sh run X </dev/null` exits 0; its final `verify` event passes.
+- `uv run python scripts/verify.py <brief>` and `--rls-only` end with `VERIFY OK` (`--rls-only`: 19/19).
+- `scripts/webapp-check.sh Y </dev/null` ends with `WEBAPP OK (7/7)`.
+
+## Writing
+
+Active voice, short sentences, commands in `shell` fences, no filler. Keep the
+disclaimer that this is personal work with synthetic data. Never mention
+accounts, tenancy or compartment OCIDs, DSN service names, or key values.
+
+ succeeded in 116ms:
+# Specification: Deep Agents on your own data, safely
+
+Version 1, 2026-10-05. Written for an AI coding agent (OpenAI Codex) that
+executes in the operator's environment, and complete enough for a person to
+follow by hand. The prompt that drives an agent through it is
+[`PROMPT.md`](PROMPT.md). Where this file and a script differ, the script
+wins, and the difference is a bug to report.
+
+## 0. What is being built, and what "done" means
+
+A LangChain Deep Agent, built with the open-source `langchain-oracle`
+packages, prepares a pre-visit clinical brief for one of three **synthetic**
+patients. Their charts live in Oracle AI Database 26ai as relational rows
+(Alembic migrations) and as vector stores whose embeddings are computed inside
+the database. The agent runs inside an NVIDIA OpenShell sandbox; the operator
+starts it from this conversation or from the web application, and watches the
+sandbox console live.
+
+Done means all of the following are true:
+
+1. `scripts/preflight.sh </dev/null` ends with `PREFLIGHT OK`.
+2. `scripts/safety_probe.sh </dev/null` ends with `PROBE OK (7/7)`.
+3. For each patient X, Y and Z, `scripts/sandbox.sh run <P> </dev/null` exits 0,
+   its last `verify` event says `"passed": true`, and
+   `uv run python scripts/verify.py <brief>` ends with `VERIFY OK`.
+4. `uv run python scripts/verify.py --rls-only` ends with `VERIFY OK (19/19)`:
+   row-level security, write refusal, synthetic-only constraints, and the care
+   action workflow (an agent proposes for its own patient only, cannot approve
+   or execute; the clinician's approval executes and is audited).
+5. `scripts/webapp-check.sh Y </dev/null` ends with `WEBAPP OK (7/7)`: the web
+   application builds, serves, and runs a verified brief through its API with
+   both stream channels (agent events and the sandbox console).
+6. Post-conditions hold (section 5.2), and the operator has the report in section 9.
+
+Out of scope: real patient data of any kind, production hardening, and
+clusters other than a local OpenShell gateway with the Docker driver.
+
+## 1. Inputs the operator supplies
+
+| Input | Needed when | How the agent gets it |
+|---|---|---|
+| An Oracle Autonomous Database 26ai (an Always Free one works) with TLS (no wallet) and an ACL that admits this machine | always | ask for its TLS connect string (DSN) and host; write them to the config file (section 4.2) |
+| The ADMIN password | once, for section 4.3 | **never through the agent**: the operator runs `scripts/operator/db-admin.sh` in their own terminal |
+| An OCI Generative AI API key, region `us-chicago-1` | once, for section 4.4 | **never through the agent**: the operator runs `scripts/operator/genai-provider.sh` in their own terminal |
+| Chat models | optional | defaults `google.gemini-2.5-pro` (lead) and `google.gemini-2.5-flash` (specialists) |
+
+The secret rule. The agent never asks for, receives, prints, logs, or stores
+a password or a key. The two operator scripts read them with `read -rs`. The
+database passwords they generate go into owner-only files
+(`~/.config/deepagents-oracle-health/secrets/`, directory 0700, files 0600);
+scripts read them by name and never print them. The GenAI key goes into the
+OpenShell gateway; sandboxes see a placeholder. When you hand the operator one
+of these steps, tell them to reply `done` and not to paste the output.
+
+The data rule. Every patient is invented. The schema enforces it
+(`CHECK (is_synthetic = 'Y')`, `CHECK (patient_id LIKE 'SYN-%')`), and the
+agent's input guard blocks real-looking identifiers. Never add, import, or
+paste real patient data, and stop if asked to.
+
+## 2. Prerequisites and preflight
+
+| Requirement | Check | Passes when | If it fails |
+|---|---|---|---|
+| macOS on Apple Silicon or Linux | `uname -sm` | `Darwin arm64`, `Linux x86_64`, `Linux aarch64` | ask |
+| uv | `uv --version` | prints a version | fix: install uv |
+| Docker visible to Codex | `docker info --format '{{.ServerVersion}}'` (Rancher Desktop: `~/.rd/bin/docker`) | prints a version | ask the operator to start Docker |
+| OpenShell CLI 0.1.2 and a connected gateway | `openshell status </dev/null` | `Status: Connected`, `Version: 0.1.2` | ask: install OpenShell and start the gateway |
+| Node 20+ | `node --version` | v20 or later | fix: install Node |
+
+`scripts/preflight.sh` runs these and the data checks in one pass; it changes
+nothing. Show the operator its table before continuing.
+
+## 3. Architecture
+
+| Piece | Name | Defined in |
+|---|---|---|
+| Schema owner | `DA_OWNER` (tables, model, policies) | `db/setup_admin.py` |
+| Agent users | `DA_AGENT_X`, `DA_AGENT_Y`, `DA_AGENT_Z`: SELECT on the chart, INSERT on `care_action` (proposals), and their own schema for checkpoints and memory (64 MB quota) | `db/setup_admin.py`, migrations 0004-0006 |
+| Clinician | `DA_CLINICIAN`: EXECUTE on `DECIDE_CARE_ACTION`, SELECT on the workflow tables; used by the web app to approve or reject | `db/setup_admin.py`, migration 0006 |
+| Care actions | `care_action` (proposed/approved/executed/rejected), `care_action_event` (audit), `lab_order`, `patient_message` (simulated portal outbox), `appointment` requests | migration 0006 |
+| Agent state | `OracleSaver` checkpoints and `OracleStore` memory (IVF vector index) in each agent user's schema; `/memories/patient-history.md` via `StoreBackend` | `agent/memory.py` |
+| Clinical schema | `patient`, `condition`, `allergy`, `medication`, `encounter`, `clinical_note`, `lab_result`, `vital_sign`, `referral`, `appointment` | migration 0001 |
+| Vector stores | `PATIENT_NOTE_VEC`, `CLINICAL_REFERENCE` (MedQuAD), `RESEARCH_EVIDENCE` (PubMedQA), shaped like `OracleVS` tables | migration 0002 |
+| Cohort benchmark | `cohort_benchmark`: aggregates of 300 background synthetic patients, no ids | migration 0003, `db/seed.py` |
+| Row-level security | Virtual Private Database policy `DA_PATIENT_SCOPE` on every patient table and the note vectors | migrations 0004-0005 |
+| Embedding model | `DA_OWNER.MINILM_L12` (all-MiniLM-L12-v2 ONNX, 384 dimensions) | `db/setup_admin.py` |
+| Deep Agent | `langchain_oci.create_deepagents_agent`: lead + `chart-analyst`, `guideline-researcher`, `evidence-researcher`, `care-coordinator`; structured `PreVisitBrief` output; `checkpointer`, `store`, `backend`, `memory`, `permissions` from langgraph-oracledb and deepagents | `agent/brief_agent.py` |
+| Sandbox image | `deepagents-oracle-health:0.1` | `sandbox/Dockerfile` |
+| Provider | `deepagents-genai`, type `oci-genai-python` | `sandbox/profile/oci-genai-python.yaml` |
+| Sandbox policy | provider endpoint (OCI GenAI `/openai/v1/**`) plus `oracle_ai_database` (TCP to the listener) for `/usr/local/bin/python3.12` only | `sandbox/policy.template.yaml` |
+| Sandboxes | `brief-<x|y|z>-HHMMSS` (one per run), `probe-HHMMSS` | `scripts/sandbox.sh`, `scripts/safety_probe.sh` |
+
+What the sandbox holds, and why each is safe: the GenAI key is a placeholder;
+the database login is one patient's read-only user, uploaded as a 0600 file
+and deleted after the agent reads it; the only egress is the two endpoints
+above, for one binary.
+
+## 4. Build steps
+
+Run every command from the repository root, in the foreground, with
+`</dev/null`. Each step has a checkpoint; do not continue past a failed one
+without resolving it (section 7).
+
+### 4.1 Python and the sandbox image
+
+```shell
+uv sync
+docker build -t deepagents-oracle-health:0.1 sandbox/
+```
+
+Checkpoint: `docker image inspect deepagents-oracle-health:0.1` succeeds.
+
+### 4.2 Config file
+
+Write `~/.config/deepagents-oracle-health/config.json` (mode 0600) from
+`config.example.json` with the operator's DSN and host. It holds no secret.
+
+Checkpoint: `python3 -m json.tool ~/.config/deepagents-oracle-health/config.json` succeeds.
+
+### 4.3 Database users and model (operator step)
+
+Hand the operator: `scripts/operator/db-admin.sh` in their own terminal. It
+asks for the ADMIN password without echoing it, creates or updates the four
+demo users and `DA_CLINICIAN`, and rotates their passwords. Wait for `done`.
+Re-run it after pulling a version that changes grants.
+
+Checkpoint: `scripts/preflight.sh` shows the four `secret ... present` lines as PASS.
+
+### 4.4 GenAI provider (operator step)
+
+Hand the operator: create the IAM policy first, then the key (the profile's
+header explains the order), then `scripts/operator/genai-provider.sh` in their
+own terminal. Wait for `done`. If `openshell provider get deepagents-genai`
+already succeeds, skip this step.
+
+Checkpoint: `openshell provider get deepagents-genai </dev/null` succeeds.
+
+### 4.5 Data layer
+
+```shell
+scripts/setup-data.sh </dev/null
+```
+
+Migrations, the synthetic rows, then in-database chunking and embedding.
+About four minutes on an Always Free database.
+
+Checkpoint: ends with `SETUP-DATA OK`; `uv run alembic current` shows `0006 (head)`.
+
+To start the workflow from a clean slate (no care actions, no memory):
+`uv run python db/reset_workflow.py`.
+
+### 4.6 Preflight and the safety probe
+
+```shell
+scripts/preflight.sh </dev/null
+scripts/safety_probe.sh </dev/null
+```
+
+Checkpoint: `PREFLIGHT OK`, then `PROBE OK (7/7)`.
+
+### 4.7 Briefs
+
+```shell
+scripts/sandbox.sh run X </dev/null > out/run-X.jsonl
+uv run python scripts/verify.py out/runs/... # or extract the brief event, see below
+```
+
+stdout carries JSON events; stderr carries the sandbox console. The `brief`
+event holds the Markdown; save it to `out/brief-<P>.md` and verify it. Repeat
+for Y and Z. One run takes two to five minutes.
+
+Checkpoint: each run exits 0 with a passing final `verify` event, and
+`scripts/verify.py out/brief-<P>.md` ends with `VERIFY OK`.
+
+### 4.8 The web application
+
+```shell
+scripts/webapp-check.sh Y </dev/null
+```
+
+Builds `web/` (React + Tailwind), starts `ui/server.py` on port 8766, and
+drives one brief through the API exactly as the browser does: the patient
+cards (each read through its own database user), `POST /api/runs`, the
+Server-Sent Events stream to the end, and the Word export. The backend runs the
+same `scripts/sandbox.sh`, so the run is a real sandboxed run. The script stops
+the server it started.
+
+Checkpoint: ends with `WEBAPP OK (7/7)`.
+
+To leave the application running for the operator afterwards:
+
+```shell
+uv run uvicorn ui.server:app --host 127.0.0.1 --port 8765   # then open http://127.0.0.1:8765
+```
+
+Tell the operator the URL; do not run it in the foreground of your own session.
+
+## 5. Acceptance
+
+### 5.1 The checks
+
+The five conditions in section 0.
+
+### 5.2 Post-conditions
+
+- `openshell sandbox list` shows no `brief-*` or `probe-*` sandbox.
+- No password or key appears in any output, log, or in this conversation.
+- No file under the repository contains a DSN service name, OCID, or key.
+
+## 6. Rules for the agent
+
+- Never handle a secret (section 1). Anything that looks like a key or a
+  password in an output is a stop condition, not something to repeat.
+- Never touch database objects the demo did not create, gateway resources
+  other than `deepagents-genai` and the demo's sandboxes, or other Docker
+  containers. Do not run `setup_admin.py` yourself: it needs ADMIN.
+- Do not edit `agent/`, `db/`, `migrations/`, `sandbox/` or `scripts/` to make
+  a check pass. If a change seems necessary, explain why and stop.
+- Every `openshell sandbox exec` needs `</dev/null` (0.1.2 reads piped stdin to EOF).
+- One sandbox run at a time.
+
+## 7. Known behaviour and troubleshooting
+
+| Symptom | Cause | Action |
+|---|---|---|
+| `DPY-6005 ... [Errno 13] Permission denied` right after a sandbox starts | OpenShell 0.1.2: the first settings poll (~10 s) bumps the policy generation and closes open connections (NVIDIA/OpenShell#3994) | `scripts/sandbox.sh` waits for the reload; if you see this, re-run |
+| `DPY-6000 ... ORA-12506` | the database ACL does not admit this machine's egress IP | ask the operator to add it |
+| `DPY-3013: unsupported Python type str for database type DB_TYPE_CLOB` | python-oracledb 4.x/26.x thin mode with `OracleEmbeddings` | keep `oracledb<4` |
+| HTTP 400 `Unknown name "exclusiveMinimum"` or `function_response.response` | Gemini on the OpenAI-compatible endpoint | handled by `GeminiChatOpenAI`; do not swap the class |
+| `verify` event with problems, then a repair turn | the runner sent the draft back | expected; it retries twice |
+| HTTP 401 from OCI GenAI | the key was minted before its policy | mint a new key after the policy (operator) |
+| `Refused: 5 actions already proposed in this run` in a tool result | the care coordinator hit its cap | expected; the brief lists what it proposed |
+| `ORA-28115` when a tool proposes an action | row-level security refused a proposal for another patient | expected; that is the boundary |
+| `PermissionError` on the Hugging Face cache during setup | a sandboxed coding agent cannot write `~/.cache` | `setup-data.sh` sets `HF_HOME` inside the repository; keep it |
+
+## 8. Teardown
+
+```shell
+scripts/teardown.sh </dev/null          # leftover sandboxes
+scripts/teardown.sh --data </dev/null   # also drop the demo tables
+```
+
+The operator removes the users and model with `scripts/operator/db-admin.sh
+--drop` and the provider with `openshell provider delete deepagents-genai`.
+
+## 9. Report
+
+End with: the preflight table; the probe table; the web application check; for each patient the run's
+seconds, tool calls, SQL queries, searches, delegations, citation count, and
+the verify result; the row-level-security result; any section-7 symptom met
+and what was done; the care actions each run proposed; and confirmation of section 5.2.
+
+ succeeded in 141ms:
+      55 AGENTS.md
+     251 codex/SPEC.md
+     306 total
+
+ succeeded in 170ms:
+/Users/federico.kamelhar/Projects/deepagents
+
+codex
+The spec confirms section 2 is `scripts/preflight.sh </dev/null`, and section 4.8 is `scripts/webapp-check.sh Y </dev/null`. I’m running preflight now and will stop if anything secret-like appears in output.
+exec
+/bin/zsh -lc 'scripts/preflight.sh </dev/null' in /Users/federico.kamelhar/Projects/deepagents
+ succeeded in 7739ms:
+PASS  uv                                 uv 0.11.15 (Homebrew 2026-05-18 aarch64-apple-darwin)
+PASS  openshell CLI                      openshell 0.1.2
+PASS  gateway connected                    Version: 0.1.2
+PASS  sandbox image present              sha256:5b59a19d7836
+PASS  provider on gateway                deepagents-genai (key held by the gateway)
+PASS  config file                        /Users/federico.kamelhar/.config/deepagents-oracle-health/config.json
+PASS  secrets directory 0700             owner-only
+PASS  secret DA_OWNER present            present (not read)
+PASS  secret DA_AGENT_X present          present (not read)
+PASS  secret DA_AGENT_Y present          present (not read)
+PASS  secret DA_AGENT_Z present          present (not read)
+PASS  database schema at head            alembic: 0005 (head)
+PASS  row-level security                 VERIFY OK (19/19)
+PASS  vector stores loaded               PATIENT_NOTE_VEC=19 CLINICAL_REFERENCE=344 RESEARCH_EVIDENCE=955
+
+PREFLIGHT OK
+
+codex
+Preflight passed cleanly and did not expose secret values. Now I’m running the patient Y web application check; this can take a few minutes because it builds the frontend and drives a real sandboxed run through the API.
+exec
+/bin/zsh -lc 'scripts/webapp-check.sh Y </dev/null' in /Users/federico.kamelhar/Projects/deepagents
+codex
+The webapp check has built the frontend and started the FastAPI server on its test port. I’m waiting on the scripted browser/API path now, including the SSE stream and export check.
+codex
+No new output yet, which is normal for this script while the sandboxed brief run is underway. I’m continuing to let it run in the foreground exactly as the spec requires.
+codex
+Still waiting on the scripted end-to-end run; there’s no failure output or abort marker so far. I’ll keep polling until it finishes, then I’ll pull out the table verbatim.
+codex
+The check is still running quietly after the initial server startup. That usually means the real sandboxed agent run is still streaming behind the script, so I’m leaving it alone and watching for completion.
+codex
+No new table yet. I’m at the “wait, don’t poke it” stage: the script owns the server lifecycle and should clean up once the run reaches its final checks.
+codex
+Still running, still no abort/check-failure output. I’m continuing to wait for the final webapp-check summary.
+codex
+The end-to-end run is taking the longer side of the expected range. I’m not starting any second sandbox run; SPEC says one at a time, so I’ll keep this foreground process moving to completion.
+codex
+Still quiet, which means there’s nothing actionable from SPEC section 7 yet. I’m waiting for the script’s own final output rather than interrupting the check.
+ succeeded in 294141ms:
+$ (cd web && npm ci && npm run build)
+$ uvicorn ui.server:app --port 8766
+PASS  front end served                   index.html from web/dist
+PASS  patient cards (own DB user each)   SYN-X sees 1, SYN-Y sees 1, SYN-Z sees 1
+PASS  agent channel streamed             68 events: brief, checkpoints, delegate, done, memory, plan, start, thought, tool, tool_result, verify
+PASS  sandbox console streamed           197 lines, 45 ALLOWED, 0 DENIED
+PASS  run succeeded                      status=succeeded
+PASS  brief verified by the gate         citations=163
+PASS  Word export                        43981 bytes
+
+WEBAPP OK (7/7)
+
+codex
+This is personal work with synthetic data. I ran only SPEC 2 and SPEC 4.8 for patient Y. I did not approve or reject any care action.
+
+**Preflight**
+
+```text
+PASS  uv                                 uv 0.11.15 (Homebrew 2026-05-18 aarch64-apple-darwin)
+PASS  openshell CLI                      openshell 0.1.2
+PASS  gateway connected                  Version: 0.1.2
+PASS  sandbox image present              sha256:5b59a19d7836
+PASS  provider on gateway                deepagents-genai (key held by the gateway)
+PASS  config file                        /Users/federico.kamelhar/.config/deepagents-oracle-health/config.json
+PASS  secrets directory 0700             owner-only
+PASS  secret DA_OWNER present            present (not read)
+PASS  secret DA_AGENT_X present          present (not read)
+PASS  secret DA_AGENT_Y present          present (not read)
+PASS  secret DA_AGENT_Z present          present (not read)
+PASS  database schema at head            alembic: 0005 (head)
+PASS  row-level security                 VERIFY OK (19/19)
+PASS  vector stores loaded               PATIENT_NOTE_VEC=19 CLINICAL_REFERENCE=344 RESEARCH_EVIDENCE=955
+
+PREFLIGHT OK
+```
+
+**Webapp Check**
+
+```text
+PASS  front end served                   index.html from web/dist
+PASS  patient cards (own DB user each)   SYN-X sees 1, SYN-Y sees 1, SYN-Z sees 1
+PASS  agent channel streamed             68 events: brief, checkpoints, delegate, done, memory, plan, start, thought, tool, tool_result, verify
+PASS  sandbox console streamed           197 lines, 45 ALLOWED, 0 DENIED
+PASS  run succeeded                      status=succeeded
+PASS  brief verified by the gate         citations=163
+PASS  Word export                        43981 bytes
+
+WEBAPP OK (7/7)
+```
+
+WEBAPP OK (7/7) was reached.
+tokens used
+32,183
+This is personal work with synthetic data. I ran only SPEC 2 and SPEC 4.8 for patient Y. I did not approve or reject any care action.
+
+**Preflight**
+
+```text
+PASS  uv                                 uv 0.11.15 (Homebrew 2026-05-18 aarch64-apple-darwin)
+PASS  openshell CLI                      openshell 0.1.2
+PASS  gateway connected                  Version: 0.1.2
+PASS  sandbox image present              sha256:5b59a19d7836
+PASS  provider on gateway                deepagents-genai (key held by the gateway)
+PASS  config file                        /Users/federico.kamelhar/.config/deepagents-oracle-health/config.json
+PASS  secrets directory 0700             owner-only
+PASS  secret DA_OWNER present            present (not read)
+PASS  secret DA_AGENT_X present          present (not read)
+PASS  secret DA_AGENT_Y present          present (not read)
+PASS  secret DA_AGENT_Z present          present (not read)
+PASS  database schema at head            alembic: 0005 (head)
+PASS  row-level security                 VERIFY OK (19/19)
+PASS  vector stores loaded               PATIENT_NOTE_VEC=19 CLINICAL_REFERENCE=344 RESEARCH_EVIDENCE=955
+
+PREFLIGHT OK
+```
+
+**Webapp Check**
+
+```text
+PASS  front end served                   index.html from web/dist
+PASS  patient cards (own DB user each)   SYN-X sees 1, SYN-Y sees 1, SYN-Z sees 1
+PASS  agent channel streamed             68 events: brief, checkpoints, delegate, done, memory, plan, start, thought, tool, tool_result, verify
+PASS  sandbox console streamed           197 lines, 45 ALLOWED, 0 DENIED
+PASS  run succeeded                      status=succeeded
+PASS  brief verified by the gate         citations=163
+PASS  Word export                        43981 bytes
+
+WEBAPP OK (7/7)
+```
+
+WEBAPP OK (7/7) was reached.

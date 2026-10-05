@@ -117,6 +117,12 @@ codex -c sandbox_workspace_write.network_access=true \
   "$(cat codex/PROMPT.md)"
 ```
 
+Recorded runs ([evidence/codex](evidence/codex/)): one stopped correctly
+at SPEC section 7 when the machine's egress IP left the database ACL; one ran
+SPEC 4.1 to 5 end to end (preflight 14/14, probe 7/7, three verified briefs,
+row-level security, post-condition scans); one ran the web application check,
+`WEBAPP OK (7/7)`, inside Codex's `workspace-write` sandbox.
+
 Codex runs the preflight, hands you the two steps that involve a secret (the
 database ADMIN password and the OCI Generative AI key, both typed with
 `read -rs` in your own terminal), then migrates, seeds, embeds, probes the

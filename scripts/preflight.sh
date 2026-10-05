@@ -34,7 +34,7 @@ check "secrets directory 0700"   sh -c "test \"\$(stat -f %Lp '$SECRETS' 2>/dev/
 for u in DA_OWNER DA_AGENT_X DA_AGENT_Y DA_AGENT_Z; do
   check "secret $u present"      sh -c "test -s '$SECRETS/$u' && echo 'present (not read)'"
 done
-check "database schema at head"  sh -c "cd '$ROOT' && uv run --quiet alembic current 2>/dev/null | grep -q '(head)' && echo 'alembic: 0005 (head)'"
+check "database schema at head"  sh -c "cd '$ROOT' && uv run --quiet alembic current 2>/dev/null | grep '(head)' | sed 's/^/alembic: /'"
 check "row-level security"       sh -c "cd '$ROOT' && uv run --quiet python scripts/verify.py --rls-only"
 check "vector stores loaded"     sh -c "cd '$ROOT' && uv run --quiet python db/stats.py"
 
