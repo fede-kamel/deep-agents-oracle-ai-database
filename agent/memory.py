@@ -30,6 +30,19 @@ def namespace(patient_id: str) -> tuple[str, ...]:
     return ("patient", patient_id)
 
 
+def _serde():
+    """Checkpoints hold the structured brief; register its models with LangGraph's
+    serializer instead of relying on its deprecated unregistered-type fallback."""
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+    from pydantic import BaseModel
+
+    from agent import brief_schema
+
+    models = [(brief_schema.__name__, name) for name, obj in vars(brief_schema).items()
+              if isinstance(obj, type) and issubclass(obj, BaseModel) and obj.__module__ == brief_schema.__name__]
+    return JsonPlusSerializer(allowed_msgpack_modules=models)
+
+
 def open_state(dsn: str, user: str, password: str, embeddings):
     """Return (checkpointer, store, close) for the agent user's own schema."""
     import oracledb
@@ -38,7 +51,7 @@ def open_state(dsn: str, user: str, password: str, embeddings):
 
     saver_conn = oracledb.connect(user=user, password=password, dsn=dsn)
     store_conn = oracledb.connect(user=user, password=password, dsn=dsn)
-    saver = OracleSaver(saver_conn)
+    saver = OracleSaver(saver_conn, serde=_serde())
     saver.setup()  # idempotent
     store = OracleStore(
         store_conn,
@@ -89,7 +102,9 @@ def remember_brief(store, patient_id: str, run_id: str, brief) -> None:
     append(store, patient_id, f"Brief accepted (run {run_id}).\n{steps}\n{actions}")
 
 
-def remember_decision(store, patient_id: str, action_id: int, title: str, decision: str, result: str | None) -> None:
+def remember_decision(store, patient_id: str, action_id: int, title: str, decision: str, result: str | None,
+                      by: str = "clinician") -> None:
     outcome = f" Result: {result}." if result else ""
     verb = {"approve": "approved", "reject": "rejected"}.get(decision, decision)
-    append(store, patient_id, f"Clinician {verb} action #{action_id}: {title}.{outcome}")
+    who = {"clinician": "Clinician", "physician": "Doctor"}.get(by, by)
+    append(store, patient_id, f"{who} {verb} action #{action_id}: {title}.{outcome}")

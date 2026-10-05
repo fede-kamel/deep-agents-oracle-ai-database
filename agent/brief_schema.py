@@ -42,8 +42,8 @@ class NextStep(BaseModel):
 
 class ProposedAction(BaseModel):
     action_id: int = Field(description="The care action id the care coordinator reported.")
-    kind: str = Field(description="lab_request, patient_message, or follow_up.")
-    summary: str = Field(description="One line: what it does and why.")
+    kind: str = Field(description="lab_request, patient_message, follow_up, or medication_change.")
+    summary: str = Field(description="One line: what it does and why; for a medication change, say it awaits the doctor (policy CP-02).")
 
 
 class Source(BaseModel):

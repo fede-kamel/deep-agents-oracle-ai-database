@@ -15,7 +15,13 @@ PASS  agent cannot propose for SYN-Y             ORA-28115
 PASS  agent cannot approve (UPDATE)              ORA-41900
 PASS  agent cannot execute                       ORA-06550
 PASS  clinician approval executes and audits     executed → LAB_ORDER; proposed>approved>executed
+PASS  care coordinator cannot propose a medication change (CP-03) ORA-20014
+PASS  the refusal is logged despite the rollback 2 policy_event rows
+PASS  escalation is stamped with the real sender claimed medication-safety, stored care-coordinator (open)
+PASS  medication-safety's change goes to the doctor (CP-02) stored needs_physician under CP-02 by medication-safety
+PASS  clinician cannot approve it (CP-02)        ORA-20012
+PASS  physician approval executes it             executed; Furosemide now held
 PASS  schema rejects id without SYN-             ORA-02290
 PASS  schema rejects is_synthetic = 'N'          ORA-02290
 
-VERIFY OK (19/19)
+VERIFY OK (25/25)

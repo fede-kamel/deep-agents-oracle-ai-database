@@ -47,6 +47,7 @@ const AGENT_TAG: Record<string, string> = {
   "guideline-researcher": "bg-[#25381c] text-[#a6e08a]",
   "evidence-researcher": "bg-[#33244d] text-[#d2a8ff]",
   "care-coordinator": "bg-[#4a3511] text-[#f2c46d]",
+  "medication-safety": "bg-[#4d1a14] text-[#ff9b8a]",
   runner: "bg-[#1f3d29] text-[#7ee787]",
 };
 

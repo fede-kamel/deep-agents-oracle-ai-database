@@ -175,7 +175,7 @@ def main() -> None:
         cur.execute("DELETE FROM cohort_benchmark")
 
         NOTE_SEQ[0] = 0
-        for key, p in PATIENTS.items():
+        for p in PATIENTS.values():
             insert_patient(cur, p)
         cohort = generate()
         for p in cohort:

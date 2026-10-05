@@ -1,8 +1,9 @@
 import clsx from "clsx";
 import {
   Activity, Boxes, ClipboardCheck, Cpu, Database, FileText, HeartPulse, ListTree, Play, ShieldCheck, Sparkles,
-  SquareTerminal, UserRound, Wind,
+  RotateCcw, SquareTerminal, UserRound, Wind,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { Patient, RunView, Safety } from "../api";
 
 export type Workspace = "patient" | "live" | "trace" | "sandbox" | "actions" | "brief" | "safety";
@@ -10,8 +11,9 @@ export type Workspace = "patient" | "live" | "trace" | "sandbox" | "actions" | "
 const PATIENT_ICON = { X: Activity, Y: HeartPulse, Z: Wind } as const;
 const PATIENT_TONE = { X: "text-teal", Y: "text-oracle", Z: "text-violet" } as const;
 
-export function TopBar({ patients, selected, onSelect, disabled, view, safety }: {
+export function TopBar({ patients, selected, onSelect, disabled, view, safety, onReset }: {
   patients: Patient[]; selected?: Patient; onSelect: (p: Patient) => void; disabled: boolean; view: RunView; safety?: Safety;
+  onReset: () => void;
 }) {
   const running = view.status === "running" || view.status === "starting";
   return (
@@ -50,6 +52,10 @@ export function TopBar({ patients, selected, onSelect, disabled, view, safety }:
         ) : null}
         <span className="flex items-center gap-1.5 rounded-full bg-teal-soft px-2.5 py-1 font-medium text-teal"><Cpu className="size-3.5" /> {safety ? `${safety.chat_model.replace("openai.", "")} + ${safety.worker_model.replace("google.", "")}` : "OCI Generative AI"}</span>
         <span className="rounded-full bg-ink px-2.5 py-1 font-semibold tracking-wide text-white">SYNTHETIC DATA</span>
+        <button onClick={onReset} disabled={disabled && false} title="Clear every run, action, memory and checkpoint, and start the demo again"
+          className="flex items-center gap-1.5 rounded-full border border-line bg-panel px-3 py-1 font-semibold text-ink-2 transition hover:border-oracle/50 hover:text-oracle disabled:opacity-40">
+          <RotateCcw className="size-3.5" /> Reset demo
+        </button>
       </div>
     </header>
   );
@@ -148,9 +154,12 @@ export function PatientBar({ patient, question, setQuestion, onRun, running, not
 }
 
 export function SafetyView({ safety }: { safety?: Safety }) {
+  const [policies, setPolicies] = useState<{ code: string; kind: string; required_role: string; allowed_proposer: string; rule: string }[]>([]);
+  useEffect(() => { fetch("/api/policies").then((r) => r.json()).then(setPolicies).catch(() => undefined); }, []);
   const db = [
     ["Agent user reads one patient", "row-level security (VPD) on every chart table and the note vectors", "verify.py: 0 rows of another patient"],
     ["Agent user proposes, never acts", "INSERT on care_action only; trigger forces 'proposed'; update_check refuses other patients", "ORA-28115 · ORA-41900 · ORA-06550"],
+    ["Policy names the agent, too", "each tool stamps its session with the agent's name; CP-03 refuses a medication change from any agent but medication-safety", "ORA-20014 · logged in policy_event"],
     ["Clinician approves, database executes", "DA_CLINICIAN holds EXECUTE on DECIDE_CARE_ACTION; every step audited", "proposed > approved > executed"],
     ["Synthetic only", "CHECK is_synthetic = 'Y', ids must start with SYN-", "ORA-02290"],
     ["Agent state in its own schema", "OracleSaver checkpoints, OracleStore memory; 64 MB quota", "memory read-only to the agent"],
@@ -191,7 +200,24 @@ export function SafetyView({ safety }: { safety?: Safety }) {
               </div>
             ))}
           </div>
-          <div className="mt-3 text-[11.5px] text-ink-3"><span className="font-mono">scripts/verify.py --rls-only</span>: 19 of 19.</div>
+          <div className="mt-3 text-[11.5px] text-ink-3"><span className="font-mono">scripts/verify.py --rls-only</span>: 25 of 25.</div>
+        </section>
+        <section className="rounded-2xl border border-oracle/25 bg-panel p-5 xl:col-span-2">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-oracle">Care policies · which agent may propose, who may approve (DA_OWNER.care_policy)</h3>
+          <table className="w-full text-[12.5px]">
+            <tbody>
+              {policies.map((p) => (
+                <tr key={p.code} className="border-b border-line/60 last:border-0">
+                  <td className="py-2 pr-3 font-mono text-[11.5px] font-semibold text-ink">{p.code}</td>
+                  <td className="py-2 pr-3 font-mono text-[11.5px] text-ink-2">{p.kind}</td>
+                  <td className="py-2 pr-3 font-mono text-[11px] text-ink-3">{p.allowed_proposer === "any" ? "any agent" : `${p.allowed_proposer} only`}</td>
+                  <td className="py-2 pr-3"><span className={p.required_role === "physician" ? "rounded bg-oracle-soft px-1.5 py-0.5 text-[10.5px] font-semibold text-oracle" : "rounded bg-teal-soft px-1.5 py-0.5 text-[10.5px] font-semibold text-teal"}>{p.required_role}</span></td>
+                  <td className="py-2 text-ink-3">{p.rule}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-2 text-[11.5px] text-ink-3">Enforced in the database: the proposal trigger refuses the care coordinator's medication change (CP-03, ORA-20014) so it escalates to the medication-safety agent; DECIDE_CARE_ACTION refuses a clinician on a CP-02 action (ORA-20012); only the doctor's approval executes it.</div>
         </section>
         <section className="rounded-2xl border border-line bg-panel p-5">
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Input guard</h3>

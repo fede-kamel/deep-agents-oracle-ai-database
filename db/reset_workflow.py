@@ -1,6 +1,10 @@
-"""Reset the workflow state to a clean slate: care actions, their audit trail,
-the lab orders, portal messages and appointment requests they produced, and
-each patient's long-term memory. The chart itself is untouched.
+"""Reset the demo to a clean slate: care actions, their audit trail, the lab
+orders, portal messages and appointment requests they produced, the agents'
+escalations and the policy log, each
+patient's long-term memory, and the agents' checkpoints. The chart itself, the
+reference stores and every configuration are untouched.
+
+Also called by the web application's "Reset demo" button.
 
     uv run python db/reset_workflow.py
 """
@@ -12,33 +16,63 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import oracledb  # noqa: E402
-from langchain_oracledb.embeddings import OracleEmbeddings  # noqa: E402
+import oracledb
+from langchain_oracledb.embeddings import OracleEmbeddings
 
-from agent import memory  # noqa: E402
-from common.config import OWNER, PATIENT_KEYS, agent_user, load_config, password  # noqa: E402
+from agent import memory
+from common.config import (
+    OWNER,
+    PATIENT_KEYS,
+    agent_user,
+    load_config,
+    password,
+)
+
+CHECKPOINT_TABLES = ("checkpoint_writes", "checkpoint_blobs", "checkpoints")
 
 
-def main() -> None:
+def reset(log=print) -> dict:
     dsn = load_config()["dsn"]
+    counts: dict[str, int] = {}
     with oracledb.connect(user=OWNER, password=password(OWNER), dsn=dsn) as conn:
         cur = conn.cursor()
-        for sql in ("DELETE FROM patient_message", "DELETE FROM lab_order",
-                    "DELETE FROM appointment WHERE status = 'requested'",
-                    "DELETE FROM care_action_event", "DELETE FROM care_action"):
+        for name, sql in (("patient messages", "DELETE FROM patient_message"),
+                          ("lab orders", "DELETE FROM lab_order"),
+                          ("appointment requests", "DELETE FROM appointment WHERE status = 'requested'"),
+                          ("audit events", "DELETE FROM care_action_event"),
+                          ("care actions", "DELETE FROM care_action"),
+                          ("escalations", "DELETE FROM agent_escalation"),
+                          ("policy events", "DELETE FROM policy_event"),
+                          ("physician orders undone", "UPDATE medication SET status = 'active', order_note = NULL WHERE order_note LIKE 'physician order%'")):
             cur.execute(sql)
-            print(f"  {sql:<52} {cur.rowcount} rows")
+            counts[name] = cur.rowcount
+            log(f"  {name:<22} {cur.rowcount} rows removed")
         conn.commit()
+    counts["checkpoints"] = 0
     for key in PATIENT_KEYS:
         user = agent_user(key)
         with oracledb.connect(user=user, password=password(user), dsn=dsn) as conn:
+            cur = conn.cursor()
+            for table in CHECKPOINT_TABLES:
+                try:
+                    cur.execute(f"DELETE FROM {table}")
+                    if table == "checkpoints":
+                        counts["checkpoints"] += cur.rowcount
+                except oracledb.DatabaseError:
+                    pass  # no run yet for this patient: the tables do not exist
+            conn.commit()
             emb = OracleEmbeddings(conn=conn, params={"provider": "database", "model": "DA_OWNER.MINILM_L12"})
             _, store, close = memory.open_state(dsn, user, password(user), emb)
             try:
                 store.delete(memory.namespace(f"SYN-{key}"), memory.HISTORY)
             finally:
                 close()
-        print(f"  memory of SYN-{key} cleared")
+        log(f"  SYN-{key}: memory and checkpoints cleared")
+    return counts
+
+
+def main() -> None:
+    reset()
     print("RESET OK")
 
 

@@ -81,7 +81,7 @@ def build_sql_tools(dsn: str, user: str, password: str):
                 rows = result.fetchmany(MAX_ROWS + 1)
         except Exception as exc:  # the database's own answer is the useful part
             return f"Oracle error: {str(exc).splitlines()[0][:400]}"
-        lines = [str({c: _cell(v) for c, v in zip(cols, row)}) for row in rows[:MAX_ROWS]]
+        lines = [str({c: _cell(v) for c, v in zip(cols, row, strict=True)}) for row in rows[:MAX_ROWS]]
         if len(rows) > MAX_ROWS:
             lines.append(f"... truncated at {MAX_ROWS} rows")
         return "\n".join(lines) if lines else "No rows."

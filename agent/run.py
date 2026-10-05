@@ -13,20 +13,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from agent import settings as settings_mod  # noqa: E402
-from agent import memory as agent_memory  # noqa: E402
-from agent import verify  # noqa: E402
-from agent.brief_schema import PreVisitBrief, render  # noqa: E402
-from agent.brief_agent import build_agent  # noqa: E402
-from agent.sql_tools import CHART_TABLES  # noqa: E402
-from data.patients import PATIENTS  # noqa: E402
-
+from agent import memory as agent_memory
+from agent import settings as settings_mod
+from agent import verify
+from agent.brief_agent import build_agent
+from agent.brief_schema import PreVisitBrief, render
+from agent.sql_tools import CHART_TABLES
+from data.patients import PATIENTS
 
 # Gemini tends to delegate straight away; the plan is what the clinician watches.
 PLAN_FIRST = (
@@ -87,7 +87,7 @@ def narrate(kind: str, payload: dict) -> str | None:
     which OpenShell relays as the sandbox's console output, so the console
     shows what each agent does next to the network decision it causes."""
     who = payload.get("agent") or "runner"
-    one = lambda v, n=160: " ".join(str(v).split())[:n]  # noqa: E731
+    one = lambda v, n=160: " ".join(str(v).split())[:n]
     if kind == "start":
         return f"[agent:lead] run started as {payload.get('db_user')} · {payload.get('model')} lead, {payload.get('worker_model')} specialists"
     if kind == "plan":
@@ -107,8 +107,11 @@ def narrate(kind: str, payload: dict) -> str | None:
             return f"[agent:{who}] SQL  {one(parsed.get('sql', args), 170)}"
         if name.startswith("search"):
             return f"[agent:{who}] {name} \"{one(parsed.get('query', ''), 120)}\""
+        if name == "escalate_to_agent":
+            return f"[agent:{who}] escalate_to_agent → {parsed.get('to_agent')} · {one(parsed.get('subject', ''), 120)}"
         if name.startswith(("propose_", "draft_")):
-            label = parsed.get("subject") or ", ".join(parsed.get("tests", []) or []) or parsed.get("visit_type", "")
+            label = (parsed.get("subject") or ", ".join(parsed.get("tests", []) or []) or parsed.get("visit_type", "")
+                     or f"{parsed.get('change', '')} {parsed.get('medication', '')}".strip())
             return f"[agent:{who}] {name} · {one(label, 120)}"
         if name in ("write_todos", "PreVisitBrief"):
             return None
@@ -117,14 +120,20 @@ def narrate(kind: str, payload: dict) -> str | None:
         name, preview = payload.get("name", ""), str(payload.get("preview", ""))
         if name == "task":
             return f"[agent:{who}] ← specialist reported back ({len(preview)} chars)"
-        if name.startswith(("propose_", "draft_")):
-            return f"[agent:{who}]   → {one(preview.split('.')[0], 120)}"
+        if "policy CP-" in preview and preview.startswith("Refused"):
+            return f"[agent:{who}]   ✕ POLICY {one(preview.split('policy ', 1)[1], 150)}"
+        if name.startswith(("propose_", "draft_", "escalate_", "decline_")):
+            return f"[agent:{who}]   → {one(preview.split('. ')[0], 130)}"
         if name == "query_chart":
             rows = preview.count("\n") + 1 if preview.startswith("{") else 0
             return f"[agent:{who}]   → {rows} rows" if rows else f"[agent:{who}]   → {one(preview, 100)}"
         if name.startswith("search"):
             return f"[agent:{who}]   → {preview.count('[Doc ID:')} hits"
         return None
+    if kind == "policy":
+        return f"[agent:runner] policy {payload.get('code')}: {payload.get('agent')} {payload.get('decision')} → escalate to medication-safety"
+    if kind == "escalation":
+        return f"[agent:runner] escalation #{payload.get('id')}: {payload.get('agent')} → {payload.get('to')}"
     if kind == "thought":
         return f"[agent:{who}] thinking: {one(payload.get('text', ''), 150)}"
     if kind == "verify":
@@ -217,14 +226,26 @@ def consume(agent, content: str, config: dict, state: dict) -> None:
                             counts["actions"] = counts.get("actions", 0) + 1
                         emit("tool", agent=who, name=name, args=short(call_args, 4000))
                 if getattr(msg, "type", "") == "tool":
-                    name = getattr(msg, "name", "")
-                    emit("tool_result", agent=who, name=name, preview=short(str(msg.content), 8000 if name == "task" else 3000))
+                    name, text = getattr(msg, "name", ""), str(msg.content)
+                    emit("tool_result", agent=who, name=name, preview=short(text, 8000 if name == "task" else 3000))
+                    policy_events(who, name, text)
         # Subgraph namespaces carry the task node's id; map them in order.
         for part in namespace:
             if part.startswith("tools:"):
                 ns_id = part.split(":", 1)[1]
                 if ns_id not in task_names and pending:
                     task_names[ns_id] = pending.pop(0)[1]
+
+
+ESCALATION = re.compile(r"Escalation (\d+) opened for the ([\w-]+) agent")
+
+
+def policy_events(who: str, name: str, text: str) -> None:
+    """Surface what the database's policy decided, as its own event."""
+    if text.startswith("Refused by the database") and "policy CP-03" in text:
+        emit("policy", agent=who, code="CP-03", decision="refused", detail=short(text, 300))
+    elif name == "escalate_to_agent" and (m := ESCALATION.search(text)):
+        emit("escalation", agent=who, id=int(m.group(1)), to=m.group(2))
 
 
 def main() -> int:
@@ -262,6 +283,7 @@ def main() -> int:
             text = rendered(state, profile, cfg)
             issues = verify.problems(text, cfg.patient_id) if text else ["No PreVisitBrief was returned."]
             if text:
+                issues += verify.action_problems(db, run_id)
                 missing = verify.unresolved(db, verify.citations(text), CHART_TABLES)
                 if missing:
                     issues.append(
@@ -283,7 +305,7 @@ def main() -> int:
         emit(kind, message=str(exc)[:600], error=exc.__class__.__name__)
         cleanup()
         return 2 if kind == "blocked" else 1
-    files, counts = state["files"], state["counts"]
+    counts = state["counts"]
 
     text = rendered(state, profile, cfg)
     structured = state.get("structured")

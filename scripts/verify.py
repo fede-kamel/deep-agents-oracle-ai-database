@@ -16,17 +16,24 @@ of another patient's rows, and is refused every write.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import oracledb  # noqa: E402
+import oracledb
 
-from agent import verify  # noqa: E402
-from agent.sql_tools import CHART_TABLES  # noqa: E402
-from common.config import OWNER, PATIENT_KEYS, agent_user, load_config, password  # noqa: E402
+from agent import verify
+from agent.sql_tools import CHART_TABLES
+from common.config import (
+    OWNER,
+    PATIENT_KEYS,
+    agent_user,
+    load_config,
+    password,
+)
 
 
 def connect(key: str):
@@ -87,6 +94,77 @@ def rls_checks() -> list[tuple[str, bool, str]]:
         cur.execute("SELECT LISTAGG(status, '>') WITHIN GROUP (ORDER BY id) FROM DA_OWNER.care_action_event WHERE action_id = :i", i=probe_id)
         trail = cur.fetchone()[0]
         results.append(("clinician approval executes and audits", st == "executed" and tab == "LAB_ORDER" and trail == "proposed>approved>executed", f"{st} → {tab}; {trail}"))
+    # Policy CP-03: only the medication-safety agent may propose a medication
+    # change. The care coordinator is refused and the refusal is logged; its
+    # escalation is stamped with its own name, whatever the row claims.
+    # The probe holds one of Y's active medications and restores it afterwards,
+    # so it does not depend on what the demo has already executed.
+    with oracledb.connect(user=OWNER, password=password(OWNER), dsn=load_config()["dsn"]) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM DA_OWNER.medication WHERE patient_id = 'SYN-Y' AND status = 'active' ORDER BY id FETCH FIRST 1 ROW ONLY")
+        probe_med = cur.fetchone()[0]
+    med_insert = ("INSERT INTO DA_OWNER.care_action (patient_id, run_id, kind, title, rationale, payload) "
+                  "VALUES ('SYN-Y', 'verify', 'medication_change', 'verify probe', 'verify probe', "
+                  "JSON(:payload)) RETURNING id INTO :i")
+    med_payload = json.dumps({"medication": probe_med, "change": "hold"})
+    with connect("Y") as conn:
+        conn.client_identifier = "care-coordinator"
+        cur = conn.cursor()
+        try:
+            cur.execute(med_insert, payload=med_payload, i=cur.var(oracledb.NUMBER))
+            conn.rollback()
+            results.append(("care coordinator cannot propose a medication change (CP-03)", False, "insert succeeded"))
+        except oracledb.DatabaseError as exc:
+            conn.rollback()
+            results.append(("care coordinator cannot propose a medication change (CP-03)", "ORA-20014" in str(exc), str(exc).split(":")[0]))
+        cur.execute("SELECT COUNT(*) FROM DA_OWNER.policy_event WHERE run_id = 'verify' AND policy_code = 'CP-03' "
+                    "AND decision = 'refused' AND agent = 'care-coordinator'")
+        logged = cur.fetchone()[0]
+        results.append(("the refusal is logged despite the rollback", logged >= 1, f"{logged} policy_event rows"))
+        esc = cur.var(oracledb.NUMBER)
+        cur.execute("INSERT INTO DA_OWNER.agent_escalation (patient_id, run_id, from_agent, to_agent, policy_code, subject, reason) "
+                    "VALUES ('SYN-Y', 'verify', 'medication-safety', 'medication-safety', 'CP-03', 'verify probe', 'verify probe') "
+                    "RETURNING id INTO :i", i=esc)
+        conn.commit()
+        cur.execute("SELECT from_agent, status FROM DA_OWNER.agent_escalation WHERE id = :i", i=int(esc.getvalue()[0]))
+        frm, est = cur.fetchone()
+        results.append(("escalation is stamped with the real sender", frm == "care-coordinator" and est == "open", f"claimed medication-safety, stored {frm} ({est})"))
+    # Policy CP-02: the medication-safety agent's change waits for a physician;
+    # the clinician is refused, the physician's approval executes it.
+    with connect("Y") as conn:
+        conn.client_identifier = "medication-safety"
+        cur = conn.cursor()
+        med_id = cur.var(oracledb.NUMBER)
+        cur.execute(med_insert, payload=med_payload, i=med_id)
+        conn.commit()
+        med_probe = int(med_id.getvalue()[0])
+        cur.execute("SELECT status, policy_code, proposed_agent FROM DA_OWNER.care_action WHERE id = :i", i=med_probe)
+        st, code, agent = cur.fetchone()
+        results.append(("medication-safety's change goes to the doctor (CP-02)", st == "needs_physician" and code == "CP-02" and agent == "medication-safety",
+                        f"stored {st} under {code} by {agent}"))
+    with oracledb.connect(user="DA_CLINICIAN", password=password("DA_CLINICIAN"), dsn=load_config()["dsn"]) as conn:
+        try:
+            conn.cursor().callproc("DA_OWNER.DECIDE_CARE_ACTION", [med_probe, "approve", None, "verify.py probe"])
+            results.append(("clinician cannot approve it (CP-02)", False, "approval succeeded"))
+        except oracledb.DatabaseError as exc:
+            results.append(("clinician cannot approve it (CP-02)", "-20012" in str(exc) or "ORA-20012" in str(exc), str(exc).split(":")[0]))
+    with oracledb.connect(user="DA_PHYSICIAN", password=password("DA_PHYSICIAN"), dsn=load_config()["dsn"]) as conn:
+        cur = conn.cursor()
+        cur.callproc("DA_OWNER.DECIDE_CARE_ACTION", [med_probe, "approve", None, "verify.py probe"])
+        cur.execute("SELECT status, result_table FROM DA_OWNER.care_action WHERE id = :i", i=med_probe)
+        st, tab = cur.fetchone()
+        cur.execute("SELECT status FROM DA_OWNER.medication WHERE patient_id = 'SYN-Y' AND name = :n", n=probe_med)
+        med_status = cur.fetchone()[0]
+        results.append(("physician approval executes it", st == "executed" and tab == "MEDICATION" and med_status == "held", f"{st}; {probe_med} now {med_status}"))
+    with oracledb.connect(user=OWNER, password=password(OWNER), dsn=load_config()["dsn"]) as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE DA_OWNER.medication SET status = 'active', order_note = NULL WHERE patient_id = 'SYN-Y' AND name = :n", n=probe_med)
+        cur.execute("DELETE FROM DA_OWNER.care_action_event WHERE action_id = :i", i=med_probe)
+        cur.execute("DELETE FROM DA_OWNER.care_action WHERE id = :i", i=med_probe)
+        cur.execute("DELETE FROM DA_OWNER.agent_escalation WHERE run_id = 'verify'")
+        cur.execute("DELETE FROM DA_OWNER.policy_event WHERE run_id = 'verify'")
+        conn.commit()
+
     with oracledb.connect(user=OWNER, password=password(OWNER), dsn=load_config()["dsn"]) as conn:
         cur = conn.cursor()
         for t in ("lab_order", "care_action_event"):
@@ -95,8 +173,6 @@ def rls_checks() -> list[tuple[str, bool, str]]:
         conn.commit()
 
     # The schema itself refuses anything that is not marked synthetic.
-
-
     with oracledb.connect(user=OWNER, password=password(OWNER), dsn=load_config()["dsn"]) as conn:
         cur = conn.cursor()
         for pid, flag, label in (("REAL-0001", "Y", "id without SYN-"), ("SYN-T", "N", "is_synthetic = 'N'")):

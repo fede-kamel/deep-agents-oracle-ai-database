@@ -21,3 +21,15 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+extend-exclude = ["web", "sandbox", "evidence", ".hf-cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E731", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["agent", "common", "data", "db", "ui"]

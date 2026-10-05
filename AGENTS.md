@@ -19,7 +19,8 @@ running anything.
   the `deepagents-genai` provider, `brief-*` and `probe-*` sandboxes, and the
   `deepagents-oracle-health` image. Never run `db/setup_admin.py` (ADMIN).
 - Care actions. Never approve or reject a care action yourself; that is the
-  clinician's decision in the web application. You may run `db/reset_workflow.py`
+  clinician's or the doctor's decision in the web application (only
+  `scripts/demo_e2e.py` decides, and only when the operator runs it). You may run `db/reset_workflow.py`
   only when the operator asks for a clean slate.
 - Integrity. Do not modify `agent/`, `db/`, `migrations/`, `sandbox/` or
   `scripts/` to make a check pass. Explain and stop instead.
@@ -31,7 +32,7 @@ running anything.
 | Path | Purpose |
 |---|---|
 | `agent/` | the Deep Agent: prompts, SQL and care-action tools, guards, memory, structured brief, runner |
-| `migrations/` | Alembic: clinical schema, vector tables, cohort benchmark, row-level security, citable note ids |
+| `migrations/` | Alembic: clinical schema, vector tables, cohort benchmark, row-level security, citable note ids, care actions, care and agent policies |
 | `db/` | ADMIN setup (operator), seed, in-database embedding, stats |
 | `data/` | synthetic patients X, Y, Z; background cohort; public reference corpus loaders |
 | `sandbox/` | image, provider profile, sandbox policy |
@@ -45,8 +46,10 @@ running anything.
 - `scripts/preflight.sh </dev/null` ends with `PREFLIGHT OK`.
 - `scripts/safety_probe.sh </dev/null` ends with `PROBE OK (7/7)`.
 - `scripts/sandbox.sh run X </dev/null` exits 0; its final `verify` event passes.
-- `uv run python scripts/verify.py <brief>` and `--rls-only` end with `VERIFY OK` (`--rls-only`: 19/19).
+- `uv run python scripts/verify.py <brief>` and `--rls-only` end with `VERIFY OK` (`--rls-only`: 25/25).
+- With the web app on 8765, `uv run python scripts/demo_e2e.py` ends with `DEMO E2E OK`.
 - `scripts/webapp-check.sh Y </dev/null` ends with `WEBAPP OK (7/7)`.
+- With the web app on 8765, `cd web && node scripts/ui-e2e.mjs Y` ends with `UI E2E OK`.
 
 ## Writing
 

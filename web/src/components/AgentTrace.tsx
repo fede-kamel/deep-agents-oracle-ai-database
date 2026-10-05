@@ -12,6 +12,7 @@ const AGENTS: Record<string, { label: string; color: string; bg: string; depth: 
   "guideline-researcher": { label: "Guideline researcher", color: "#5f7d4f", bg: "#edf3e8", depth: 1 },
   "evidence-researcher": { label: "Evidence researcher", color: "#6b4fa0", bg: "#f0ecf7", depth: 1 },
   "care-coordinator": { label: "Care coordinator", color: "#b07d1f", bg: "#fbf3e2", depth: 1 },
+  "medication-safety": { label: "Medication safety", color: "#C74634", bg: "#fbeceb", depth: 1 },
   runner: { label: "Runner gate", color: "#2e8b57", bg: "#e9f5ee", depth: 0 },
 };
 const meta = (a?: string) => AGENTS[a ?? ""] ?? { label: a ?? "agent", color: "#6f6964", bg: "#f1efed", depth: 1 };
@@ -110,6 +111,14 @@ function rows(events: AgentEvent[]): Row[] {
       case "checkpoints":
         out.push({ i, t: e.t, agent: "runner", kind: "gate", icon: Database,
           title: `${Number(e.count)} checkpoints persisted by OracleSaver`, body: `thread_id ${String(e.thread_id)}` });
+        break;
+      case "policy":
+        out.push({ i, t: e.t, agent: "runner", kind: "gate", icon: ShieldAlert, tone: "bad",
+          title: `policy ${String(e.code)} refused the ${String(e.agent)}: escalate to medication-safety`, body: String(e.detail ?? "") });
+        break;
+      case "escalation":
+        out.push({ i, t: e.t, agent: String(e.agent), kind: "delegate", icon: ArrowRightLeft,
+          title: `escalation #${String(e.id)} → ${meta(String(e.to)).label}`, body: "opened in DA_OWNER.agent_escalation" });
         break;
       case "start":
         out.push({ i, t: e.t, agent: "lead", kind: "thought", title: `run started as ${String(e.db_user)} · ${String(e.model)} lead, ${String(e.worker_model)} specialists`, body: String(e.question ?? ""), icon: Sparkles });

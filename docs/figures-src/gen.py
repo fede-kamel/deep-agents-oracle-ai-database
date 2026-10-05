@@ -102,7 +102,7 @@ class Fig:
         widths = [40 + len(label) * 11 for _, label in items]
         gap = (self.w - 160 - sum(widths)) / max(1, len(items) - 1)
         x = 80
-        for (color, label), w in zip(items, widths):
+        for (color, label), w in zip(items, widths, strict=True):
             self.e.append(f'<circle cx="{x + 11}" cy="{y}" r="11" fill="{color}"/>')
             self.text(x + 34, y + 7, label, 21, INK, anchor="start")
             x += w + gap
@@ -138,13 +138,14 @@ f.rect(450, 450, 740, 430, fill="#FFFFFF", stroke=NAVY, sw=2.5, rx=18)
 f.logo("langchain.png", 470, 466, 180)
 f.text(1170, 498, "Deep Agent · langchain-oci", 22, NAVY, anchor="end", weight="700")
 f.card(480, 520, 680, 92, "Lead: plan · delegate · return PreVisitBrief", lines=(), ts=22, tcol=NAVY, stroke=NAVY)
-specs = [("Chart analyst", "SQL + notes", TEAL), ("Guideline", "MedQuAD", MOSS), ("Evidence", "PubMed", VIOLET), ("Care coord.", "proposes actions", OCHRE)]
+specs = [("Chart", "SQL + notes", TEAL), ("Guideline", "MedQuAD", MOSS), ("Evidence", "PubMed", VIOLET),
+         ("Care coord.", "proposes", OCHRE), ("Med safety", "med changes", RED)]
 for i, (t, s, c) in enumerate(specs):
-    x = 480 + i * 172
-    f.rect(x, 650, 160, 110, stroke=c, sw=2.5)
-    f.text(x + 80, 692, t, 20, c, weight="700")
-    f.text(x + 80, 724, s, 16, SUB)
-    f.arrow(820, 612, x + 80, 650, color=MUT, sw=2.5)
+    x = 480 + i * 138
+    f.rect(x, 650, 128, 110, stroke=c, sw=2.5)
+    f.text(x + 64, 692, t, 18, c, weight="700")
+    f.text(x + 64, 724, s, 15, SUB)
+    f.arrow(820, 612, x + 64, 650, color=MUT, sw=2.5)
 f.text(820, 800, "memory: /memories/ in OracleStore · checkpoints in OracleSaver", 19, SUB)
 f.text(820, 830, "gate: accepts the brief only if every cited id exists", 19, SUB)
 f.rect(450, 905, 360, 120, fill="#FDF6E3", stroke=OCHRE, sw=2.5)
@@ -206,17 +207,18 @@ lanes = [
     ("chart-analyst", TEAL, "relational chart + notes", ["query_chart: trends, REGR_SLOPE,", "meds, referrals, benchmark", "SELECT note_ref … (0005)", "search_patient_notes"]),
     ("guideline-researcher", MOSS, "NIH reference", ["search_clinical_reference", "five or more searches", "6-10 passages with ids", "says when not covered"]),
     ("evidence-researcher", VIOLET, "PubMed abstracts", ["search_research_evidence", "five or more searches", "6-10 abstracts with ids", "skips weak matches"]),
-    ("care-coordinator", OCHRE, "proposes, never executes", ["list_care_actions first", "propose_lab_request", "draft_patient_message", "propose_follow_up · max 5"]),
+    ("care-coordinator", OCHRE, "proposes, escalates", ["propose_lab_request", "draft_patient_message", "propose_follow_up", "escalate_to_agent"]),
+    ("medication-safety", RED, "only agent for med changes", ["list_escalations", "re-checks chart + reference", "propose_medication_change", "doctor approves (CP-02)"]),
 ]
 x = 80
 for name, color, sub, lines in lanes:
-    f.rect(x, 750, 440, 330, stroke=color, sw=3, rx=20)
-    f.text(x + 220, 800, name, 23, color, weight="700", mono=True)
-    f.text(x + 220, 836, sub, 19, SUB)
+    f.rect(x, 750, 352, 330, stroke=color, sw=3, rx=20)
+    f.text(x + 176, 800, name, 21, color, weight="700", mono=True)
+    f.text(x + 176, 836, sub, 18, SUB)
     for i, ln in enumerate(lines):
-        f.text(x + 220, 900 + i * 40, ln, 18, INK, mono=(i == 0))
-    x += 465
-f.text(1000, 1140, "GPT-5.5 plans and writes; Gemini 2.5 Flash runs the four specialists. Memory loads at the start; every step is checkpointed in Oracle.", 22, INK, weight="600")
+        f.text(x + 176, 900 + i * 40, ln, 16.5, INK, mono=(i == 0))
+    x += 370
+f.text(1000, 1140, "GPT-5.5 plans and writes; Gemini 2.5 Flash runs the five specialists. Memory loads at the start; every step is checkpointed in Oracle.", 22, INK, weight="600")
 f.text(1000, 1180, "create_deepagents_agent · OracleSaver · OracleStore + StoreBackend · memory= · permissions= · ToolStrategy(PreVisitBrief)", 19, MUT, mono=True)
 f.save("figure2-deep-agent.svg")
 
@@ -295,7 +297,7 @@ f.panel(1020, 890, 900, 270, NAVY)
 f.text(1470, 948, "BRIEF GATE (the runner)", 23, NAVY, weight="700", spacing="4")
 for i, ln in enumerate(["sections, length, the medication table", "≥ 15 citations, of every kind", "every cited id looked up as the patient's user"]):
     f.text(1470, 1000 + i * 42, ln, 21, INK)
-f.text(1000, 1215, "Measured: scripts/safety_probe.sh 7/7 · scripts/verify.py --rls-only 19/19 · guard unit checks 7/7", 21, MUT, mono=True)
+f.text(1000, 1215, "Measured: scripts/safety_probe.sh 7/7 · scripts/verify.py --rls-only 25/25 · guard unit checks 7/7", 21, MUT, mono=True)
 f.save("figure4-safety-net.svg")
 
 # ===================================================== Figure 5 · one run, beat by beat
@@ -305,7 +307,7 @@ f.header("FIGURE 5 · ONE RUN, BEAT BY BEAT", "From a question to a verified bri
 actors = [("Web app / Codex", INK), ("scripts/sandbox.sh", INK), ("OpenShell gateway", GREEN), ("Sandbox · Deep Agent", NAVY),
           ("Oracle AI Database", RED), ("OCI Generative AI", RED)]
 xs = [170 + i * 332 for i in range(len(actors))]
-for (name, c), x in zip(actors, xs):
+for (name, c), x in zip(actors, xs, strict=True):
     f.rect(x - 140, 260, 280, 64, stroke=c, sw=3, rx=12)
     f.text(x, 300, name, 21, c, weight="700")
     f.e.append(f'<line x1="{x}" y1="324" x2="{x}" y2="1270" stroke="{LINE}" stroke-width="3" stroke-dasharray="6 8"/>')
@@ -434,3 +436,40 @@ f.text(1000, 920, "Who writes memory: the runner records each accepted brief; th
 f.text(1000, 962, "The model reads it and builds on it; it cannot write it, so memory holds facts the system can stand behind.", 21, SUB)
 f.text(1000, 1020, "agent/memory.py · DA_AGENT_<P>: CREATE TABLE, 64 MB quota, own schema only", 19, MUT, mono=True)
 f.save("figure9-memory.svg")
+
+# ===================================================== Figure 10 · policy and escalation
+f = Fig(2000, 1180)
+f.header("FIGURE 10 · POLICY AND ESCALATION", "Refused by policy, escalated to another agent, decided by a doctor",
+         "the database knows which agent is calling and which role may approve; no prompt is involved", accent=RED)
+chain = [
+    ("care-coordinator", OCHRE, "tries", ["propose_medication_change", "hold · Potassium chloride", "K 5.6 on spironolactone"]),
+    ("database · CP-03", RED, "refuses", ["only medication-safety may", "propose a medication change", "ORA-20014 · policy_event"]),
+    ("care-coordinator", OCHRE, "escalates", ["escalate_to_agent", "agent_escalation (open)", "sender stamped by the DB"]),
+    ("medication-safety", TEAL, "reviews", ["re-reads labs and reference", "proposes on the escalation", "escalation → accepted"]),
+    ("database · CP-02", RED, "routes", ["status needs_physician", "no agent, no clinician", "can approve it"]),
+]
+x = 80
+for i_, (who, c, verb, lines) in enumerate(chain):
+    f.panel(x, 290, 340, 430, c)
+    f.badge(x + 52, 340, i_ + 1, c)
+    f.text(x + 190, 350, verb.upper(), 22, c, weight="700", spacing="4")
+    f.text(x + 180, 410, who, 20, INK, weight="700", mono=True)
+    for j, ln in enumerate(lines):
+        f.rect(x + 34, 445 + j * 82, 290, 64, rx=12)
+        f.text(x + 179, 485 + j * 82, ln, 17, INK, mono=j == 0)
+    if i_ < len(chain) - 1:
+        f.arrow(x + 344, 505, x + 371, 505, color=MUT, sw=4)
+    x += 375
+f.arrow(1670, 720, 1430, 800, color=BADR, sw=4)
+f.arrow(1670, 720, 1760, 800, color=OKG, sw=4)
+f.card(1080, 800, 420, 130, "Clinician: refused", ["DA_CLINICIAN approves →", "ORA-20012, audited"], tcol=BADR, stroke=BADR)
+f.card(1540, 800, 380, 130, "Doctor: executed", ["DA_PHYSICIAN approves →", "medication held by order"], tcol=OKG, stroke=OKG)
+f.text(100, 830, "Why two agents: separation of duties.", 24, INK, anchor="start", weight="700")
+f.text(100, 870, "The agent that coordinates care is not the one", 21, SUB, anchor="start")
+f.text(100, 902, "that changes medications, and neither approves.", 21, SUB, anchor="start")
+f.text(100, 950, "The agent's name comes from tool code (CLIENT_IDENTIFIER),", 19, MUT, anchor="start")
+f.text(100, 978, "never from the model.", 19, MUT, anchor="start")
+f.panel(80, 1010, 1840, 120, NAVY)
+f.text(1000, 1058, "policy_event: refused (CP-03) > escalated · care_action_event: proposed (medication-safety) > needs_physician > refused > approved > executed", 18, INK, mono=True)
+f.text(1000, 1100, "migrations 0007 + 0008 · agent/care_tools.py · scripts/verify.py --rls-only 25/25 · scripts/demo_e2e.py", 18, MUT, mono=True)
+f.save("figure10-policy.svg")

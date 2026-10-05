@@ -12,11 +12,12 @@ langchain-oci ADB datastores in Oracle AI Database 26ai:
 Embeddings for every search are computed inside the database by its ONNX
 model (langchain-oracledb `OracleEmbeddings`), and the relational chart is
 reachable through read-only SQL tools. The lead agent plans, hands the work to
-three specialists, and writes the brief to /brief.md in its file system.
+five specialists, and returns the brief as structured output.
 
-The chat model is Gemini on OCI Generative AI through the OpenAI-compatible
-endpoint, so the only credential the process holds is an API key, and inside
-the sandbox that key is a placeholder the OpenShell proxy swaps in transit.
+The models run on OCI Generative AI through its OpenAI-compatible endpoint
+(the lead on GPT-5.5, the specialists on Gemini 2.5 Flash), so the only
+credential the process holds is an API key, and inside the sandbox that key
+is a placeholder the OpenShell proxy swaps in transit.
 """
 
 from __future__ import annotations
@@ -31,9 +32,9 @@ from langchain_oci.datastores import ADB, create_datastore_tools
 from langchain_openai import ChatOpenAI
 from langchain_oracledb.embeddings import OracleEmbeddings
 
-from agent.brief_schema import PreVisitBrief
-from agent.care_tools import build_care_tools
 from agent import memory as agent_memory
+from agent.brief_schema import PreVisitBrief
+from agent.care_tools import build_care_tools, build_medication_safety_tools
 from agent.guards import guard_middleware
 from agent.settings import Settings
 from agent.sql_tools import build_sql_tools
@@ -123,10 +124,38 @@ Then propose only what this visit needs, at most five actions:
   patient a follow-up visit is needed, why in simple words, what to bring or
   do before it, and when to seek care sooner. Greet the patient as
   {{first_name}}; no other identifier, no diagnosis, no medication changes;
-- propose_follow_up once, with a window that matches the urgency.
+- propose_follow_up once, with a window that matches the urgency;
+- propose_medication_change once, for the chart's most important
+  medication-safety concern (for example a drug that raised potassium
+  dangerously, a kidney-harming over-the-counter drug as kidney function
+  falls, or a sedating drug after a fall). The database applies the care
+  policies to every proposal. If it refuses one, follow what the refusal
+  says (escalate_to_agent with the same concern and citations), once, and
+  never retry the refused action.
 
-Every reason cites the ids it rests on. Report back each action's id, kind and
-one-line purpose. Two to four actions is usually right; never repeat one.
+Every reason cites the ids it rests on. Report back each action's id, kind,
+one-line purpose and status, any refusal the database gave you, and any
+escalation id. Never repeat an action.
+
+{CITATIONS}"""
+
+MEDICATION_SAFETY = f"""\
+You are the medication-safety agent for one synthetic patient, {{patient_id}}.
+Policy CP-03 makes you the only agent that may propose a medication change;
+other agents escalate their concerns to you.
+
+1. Call list_escalations and list_care_actions. Work only on open escalations.
+2. Review each one yourself: call describe_chart_tables once, then check the
+   medication list, the labs behind the concern and their dates with
+   query_chart, and what the clinical reference
+   says with search_clinical_reference. Do not take the escalation's word for it.
+3. If the chart supports it, accept it with propose_medication_change, the
+   escalation id, the medication name exactly as charted, the smallest safe
+   change (hold before stop), and your own cited reason. Policy CP-02 then
+   sends it to the doctor; nobody else can approve it. If the chart does not
+   support it, call decline_escalation with your cited reason.
+
+Report each escalation id, your decision, the care action id and its status.
 
 {CITATIONS}"""
 
@@ -150,14 +179,20 @@ the task tool:
 - chart-analyst: the patient's facts, trends, medications, gaps (always first);
 - guideline-researcher and evidence-researcher: once you know the questions
   the chart raises, send each of them five to eight specific questions.
-- care-coordinator: last, with the chart findings and what the research
-  says, to propose lab requests, a message to the patient, and a follow-up.
+- care-coordinator: after the research, always, with the chart findings and
+  what the research says, to propose lab requests, a message to the patient
+  and a follow-up, and to try one medication change; policy CP-03 refuses
+  that to the coordinator, so it escalates;
+- medication-safety: last, always, with the escalation id the coordinator
+  reported and the findings behind it. It reviews the concern and proposes
+  the change, which the doctor decides (policy CP-02).
+The runner rejects a brief without these proposals and a resolved escalation.
 Run the two researchers after the chart analyst, and in parallel with each
-other; then the care coordinator. Use only these four specialists; never the
-general-purpose one. Specialists
+other; then the care coordinator; then medication-safety. Use only these five
+specialists; never the general-purpose one. Specialists
 return findings, not briefs: the brief is yours to write.
 
-When the three specialists have reported, finish with your structured final
+When the specialists have reported, finish with your structured final
 answer, a PreVisitBrief: every field filled from their findings. The runner
 renders it as the document and checks it, so put the substance in the fields:
 concise sentences, no filler, but complete (the rendered brief runs 1,200 to
@@ -167,7 +202,8 @@ only from the researchers' MEDQUAD and PMID ids. Compare trends with
 cohort_benchmark when the analyst reports it (a more negative eGFR slope means a
 faster decline). next_steps gives the clinician your insight: what to do,
 in order, and why, each with its citation. proposed_actions lists exactly
-the actions the care coordinator reported, by id. List every cited id once
+the actions the care coordinator and the medication-safety agent reported, by
+id; say in next_steps that the medication change waits for the doctor. List every cited id once
 in sources.
 
 {CITATIONS}"""
@@ -194,6 +230,8 @@ def _gemini_schema(node):
         for key, value in node.items():
             if key in _GEMINI_UNSUPPORTED:
                 out.setdefault(_GEMINI_UNSUPPORTED[key], value)
+            elif key == "const":
+                out["enum"] = [value]
             elif key not in ("$schema", "additionalProperties"):
                 out[key] = _gemini_schema(value)
         return out
@@ -322,10 +360,18 @@ def build_agent(settings: Settings, *, display_name: str | None = None, first_na
         },
         {
             "name": "care-coordinator",
-            "description": "Turns the findings into proposed care actions for clinician approval: lab requests, a message to the patient, a follow-up visit.",
+            "description": "Turns the findings into proposed care actions for clinician approval: lab requests, a message to the patient, a follow-up visit; escalates medication concerns to medication-safety.",
             "system_prompt": CARE_COORDINATOR.format(**fmt),
             "model": worker,
             "tools": build_care_tools(settings.dsn, settings.db_user, settings.db_password, pid),
+        },
+        {
+            "name": "medication-safety",
+            "description": "The only agent allowed to propose a medication change (policy CP-03): reviews an escalation against the chart and the reference, then proposes the change for the doctor or declines it.",
+            "system_prompt": MEDICATION_SAFETY.format(**fmt),
+            "model": worker,
+            "tools": [*build_medication_safety_tools(settings.dsn, settings.db_user, settings.db_password, pid),
+                      *sql_tools, *dedicated["clinical_reference"]],
         },
         {
             "name": "guideline-researcher",

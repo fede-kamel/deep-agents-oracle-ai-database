@@ -23,10 +23,14 @@ Done means all of the following are true:
 3. For each patient X, Y and Z, `scripts/sandbox.sh run <P> </dev/null` exits 0,
    its last `verify` event says `"passed": true`, and
    `uv run python scripts/verify.py <brief>` ends with `VERIFY OK`.
-4. `uv run python scripts/verify.py --rls-only` ends with `VERIFY OK (19/19)`:
+4. `uv run python scripts/verify.py --rls-only` ends with `VERIFY OK (25/25)`:
    row-level security, write refusal, synthetic-only constraints, and the care
    action workflow (an agent proposes for its own patient only, cannot approve
-   or execute; the clinician's approval executes and is audited).
+   or execute; the clinician's approval executes and is audited; policy CP-03
+   refuses a medication change from the care coordinator, logs the refusal and
+   stamps its escalation with the real sender; the medication-safety agent's
+   change is held for a physician by CP-02, refused to the clinician and
+   executed on the doctor's approval).
 5. `scripts/webapp-check.sh Y </dev/null` ends with `WEBAPP OK (7/7)`: the web
    application builds, serves, and runs a verified brief through its API with
    both stream channels (agent events and the sandbox console).
@@ -76,7 +80,10 @@ nothing. Show the operator its table before continuing.
 |---|---|---|
 | Schema owner | `DA_OWNER` (tables, model, policies) | `db/setup_admin.py` |
 | Agent users | `DA_AGENT_X`, `DA_AGENT_Y`, `DA_AGENT_Z`: SELECT on the chart, INSERT on `care_action` (proposals), and their own schema for checkpoints and memory (64 MB quota) | `db/setup_admin.py`, migrations 0004-0006 |
-| Clinician | `DA_CLINICIAN`: EXECUTE on `DECIDE_CARE_ACTION`, SELECT on the workflow tables; used by the web app to approve or reject | `db/setup_admin.py`, migration 0006 |
+| Clinician | `DA_CLINICIAN`: EXECUTE on `DECIDE_CARE_ACTION`, SELECT on the workflow tables; approves what policy allows a clinician | `db/setup_admin.py`, migration 0006 |
+| Doctor | `DA_PHYSICIAN`: the only identity that may decide what a policy reserves for a physician (medication changes, CP-02) | `db/setup_admin.py`, migration 0007 |
+| Care policies | `care_policy`: CP-01a-c (labs, messages, follow-ups: clinician), CP-02 (medication changes: physician); the proposal trigger escalates, the procedure enforces | migration 0007 |
+| Agent policy | CP-03: `allowed_proposer` per kind, checked against the session's `CLIENT_IDENTIFIER` (set by tool code); `agent_escalation` between agents; `policy_event` (autonomous-transaction log) | migration 0008, `agent/care_tools.py` |
 | Care actions | `care_action` (proposed/approved/executed/rejected), `care_action_event` (audit), `lab_order`, `patient_message` (simulated portal outbox), `appointment` requests | migration 0006 |
 | Agent state | `OracleSaver` checkpoints and `OracleStore` memory (IVF vector index) in each agent user's schema; `/memories/patient-history.md` via `StoreBackend` | `agent/memory.py` |
 | Clinical schema | `patient`, `condition`, `allergy`, `medication`, `encounter`, `clinical_note`, `lab_result`, `vital_sign`, `referral`, `appointment` | migration 0001 |
@@ -84,7 +91,7 @@ nothing. Show the operator its table before continuing.
 | Cohort benchmark | `cohort_benchmark`: aggregates of 300 background synthetic patients, no ids | migration 0003, `db/seed.py` |
 | Row-level security | Virtual Private Database policy `DA_PATIENT_SCOPE` on every patient table and the note vectors | migrations 0004-0005 |
 | Embedding model | `DA_OWNER.MINILM_L12` (all-MiniLM-L12-v2 ONNX, 384 dimensions) | `db/setup_admin.py` |
-| Deep Agent | `langchain_oci.create_deepagents_agent`: lead + `chart-analyst`, `guideline-researcher`, `evidence-researcher`, `care-coordinator`; structured `PreVisitBrief` output; `checkpointer`, `store`, `backend`, `memory`, `permissions` from langgraph-oracledb and deepagents | `agent/brief_agent.py` |
+| Deep Agent | `langchain_oci.create_deepagents_agent`: lead + `chart-analyst`, `guideline-researcher`, `evidence-researcher`, `care-coordinator`, `medication-safety`; structured `PreVisitBrief` output; `checkpointer`, `store`, `backend`, `memory`, `permissions` from langgraph-oracledb and deepagents | `agent/brief_agent.py` |
 | Sandbox image | `deepagents-oracle-health:0.1` | `sandbox/Dockerfile` |
 | Provider | `deepagents-genai`, type `oci-genai-python` | `sandbox/profile/oci-genai-python.yaml` |
 | Sandbox policy | provider endpoint (OCI GenAI `/openai/v1/**`) plus `oracle_ai_database` (TCP to the listener) for `/usr/local/bin/python3.12` only | `sandbox/policy.template.yaml` |
@@ -144,7 +151,7 @@ scripts/setup-data.sh </dev/null
 Migrations, the synthetic rows, then in-database chunking and embedding.
 About four minutes on an Always Free database.
 
-Checkpoint: ends with `SETUP-DATA OK`; `uv run alembic current` shows `0006 (head)`.
+Checkpoint: ends with `SETUP-DATA OK`; `uv run alembic current` shows `0008 (head)`.
 
 To start the workflow from a clean slate (no care actions, no memory):
 `uv run python db/reset_workflow.py`.
@@ -171,6 +178,18 @@ for Y and Z. One run takes two to five minutes.
 
 Checkpoint: each run exits 0 with a passing final `verify` event, and
 `scripts/verify.py out/brief-<P>.md` ends with `VERIFY OK`.
+
+### 4.7b The whole demo, end to end (optional, about 25 minutes)
+
+With the web application running on port 8765:
+
+```shell
+uv run python scripts/demo_e2e.py </dev/null
+```
+
+Resets the demo, briefs X, Y and Z, decides every proposed action (the
+clinician's approval of each medication change must be refused; the doctor's
+executes it), then briefs Y again from memory. Checkpoint: `DEMO E2E OK`.
 
 ### 4.8 The web application
 
@@ -229,6 +248,8 @@ The five conditions in section 0.
 | HTTP 400 `Unknown name "exclusiveMinimum"` or `function_response.response` | Gemini on the OpenAI-compatible endpoint | handled by `GeminiChatOpenAI`; do not swap the class |
 | `verify` event with problems, then a repair turn | the runner sent the draft back | expected; it retries twice |
 | HTTP 401 from OCI GenAI | the key was minted before its policy | mint a new key after the policy (operator) |
+| `ORA-20012: policy CP-02 ...` when approving | a clinician tried to approve a medication change | expected; approve it as the doctor |
+| `Refused by the database: ORA-20014: policy CP-03 ...` in a tool result | the care coordinator tried a medication change | expected; it escalates to the medication-safety agent |
 | `Refused: 5 actions already proposed in this run` in a tool result | the care coordinator hit its cap | expected; the brief lists what it proposed |
 | `ORA-28115` when a tool proposes an action | row-level security refused a proposal for another patient | expected; that is the boundary |
 | `PermissionError` on the Hugging Face cache during setup | a sandboxed coding agent cannot write `~/.cache` | `setup-data.sh` sets `HF_HOME` inside the repository; keep it |

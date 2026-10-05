@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { Brain, Database, ListTree, Play, ShieldCheck, Sparkles, SquareTerminal, X } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { emptyRun, getJSON, reduce, startRun, type Patient, type RunView, type Safety, type StreamItem } from "./api";
 import { ActionsPanel } from "./components/ActionsPanel";
 import { AgentTrace } from "./components/AgentTrace";
@@ -15,6 +15,21 @@ const BriefViewer = lazy(() => import("./components/BriefViewer"));
 
 type Inspect = "trace" | "console" | "safety" | null;
 
+/** A panel that fails to render (for example a chunk that no longer exists
+ * after a redeploy) shows a way back instead of blanking the whole page. */
+class PanelBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="rounded-xl border border-ochre/40 bg-ochre-soft p-5 text-[13px] text-ink-2">
+        This panel could not load. <button onClick={() => window.location.reload()} className="font-semibold text-oracle underline">Reload the page</button>; the run and its results are kept on the server.
+      </div>
+    );
+  }
+}
+
 export default function App() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [safety, setSafety] = useState<Safety>();
@@ -27,16 +42,53 @@ export default function App() {
   const [active, setActive] = useState<{ id: string; patient: string } | null>(null);
   const [actionCounts, setActionCounts] = useState({ pending: 0, decided: 0 });
   const [memory, setMemory] = useState<string>();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [toast, setToast] = useState<string>();
+  const [epoch, setEpoch] = useState(0); // bumps after a reset to refetch everything
+  const [decisions, setDecisions] = useState(0); // bumps after each decision: counts and memory change
   const source = useRef<EventSource | null>(null);
   const advanced = useRef<string | undefined>(undefined);
   const running = view.status === "starting" || view.status === "running";
+  // The run on screen belongs to its own patient, whoever is selected now.
+  const runPatient = patients.find((p) => p.key === view.patient) ?? selected;
 
   useEffect(() => {
     getJSON<Patient[]>("/api/patients").then((ps) => {
       setPatients(ps);
-      if (ps[0]) { setSelected(ps[0]); setQuestion(ps[0].question); }
+      // Keep the patient the presenter picked; the list refreshes after a reset
+      // and may arrive after they have already switched.
+      setSelected((cur) => {
+        const keep = ps.find((p) => p.key === cur?.key);
+        if (!keep && ps[0]) setQuestion(ps[0].question);
+        return keep ?? ps[0];
+      });
     });
     getJSON<Safety>("/api/safety").then(setSafety);
+  }, [epoch]);
+
+  const resetDemo = useCallback(async () => {
+    setResetting(true);
+    try {
+      const r = await fetch("/api/demo/reset", { method: "POST" });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.detail ?? r.statusText);
+      source.current?.close();
+      advanced.current = undefined;
+      setView(emptyRun());
+      setStep("patient");
+      setNotice(undefined);
+      setMemory("");
+      setActionCounts({ pending: 0, decided: 0 });
+      setEpoch((e) => e + 1);
+      setToast(`Demo reset${body["runs stopped"] ? `, ${body["runs stopped"]} run stopped` : ""}: ${body["care actions"] ?? 0} actions, ${body["checkpoints"] ?? 0} checkpoints and all memory cleared. Start with step 1.`);
+    } catch (err) {
+      setToast(`Reset refused: ${String(err).replace(/^Error: /, "")}`);
+    } finally {
+      setResetting(false);
+      setConfirmReset(false);
+      setTimeout(() => setToast(undefined), 7000);
+    }
   }, []);
 
   // Runs started elsewhere (another tab, Codex, the evidence flow) can be watched.
@@ -52,11 +104,18 @@ export default function App() {
   const proposals = view.events.filter((e) => e.type === "tool_result" && /^(propose|draft)_/.test(String(e.name))).length;
   useEffect(() => {
     if (!selected) return;
+    let current = true; // ignore answers for a patient or a state we have left
     getJSON<{ status: string }[]>(`/api/patients/${selected.key}/actions`)
-      .then((as) => setActionCounts({ pending: as.filter((a) => a.status === "proposed").length, decided: as.filter((a) => a.status !== "proposed").length }))
+      .then((as) => current && setActionCounts({ pending: as.filter((a) => a.status === "proposed" || a.status === "needs_physician").length, decided: as.filter((a) => a.status !== "proposed" && a.status !== "needs_physician").length }))
       .catch(() => undefined);
-    getJSON<{ text: string }>(`/api/patients/${selected.key}/memory`).then((m) => setMemory(m.text)).catch(() => setMemory(""));
-  }, [selected, proposals, view.status, step]);
+    getJSON<{ text: string }>(`/api/patients/${selected.key}/memory`).then((m) => current && setMemory(m.text)).catch(() => current && setMemory(""));
+    return () => { current = false; };
+  }, [selected, proposals, view.status, step, epoch, decisions]);
+
+  const countActions = useCallback((as: { status: string }[]) => {
+    const open = (s: string) => s === "proposed" || s === "needs_physician";
+    setActionCounts({ pending: as.filter((a) => open(a.status)).length, decided: as.filter((a) => !open(a.status)).length });
+  }, []);
 
   const listen = useCallback((id: string) => {
     source.current?.close();
@@ -108,7 +167,7 @@ export default function App() {
       listen(last.id);
     }).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.key]);
+  }, [selected?.key, epoch]);
 
   // When the brief lands, move the story forward once.
   useEffect(() => {
@@ -135,13 +194,14 @@ export default function App() {
       state: view.brief ? "done" : "waiting" },
     { key: "actions", title: "Actions", hint: actionCounts.pending ? `${actionCounts.pending} to review` : actionCounts.decided ? `${actionCounts.decided} decided` : "agent proposals",
       state: actionCounts.pending ? "ready" : actionCounts.decided ? "done" : "waiting" },
-    { key: "memory", title: "Memory", hint: memoryEntries ? `${memoryEntries} entries in OracleStore` : "what it will remember",
+    { key: "memory", title: "Memory", hint: memoryEntries ? `${memoryEntries} ${memoryEntries === 1 ? "entry" : "entries"} in OracleStore` : "what it will remember",
       state: memoryEntries ? "done" : "ready" },
   ], [selected, view, running, actionCounts, memoryEntries]);
 
   return (
     <div className="flex h-full flex-col">
-      <TopBar patients={patients} selected={selected} onSelect={pick} disabled={running} view={view} safety={safety} />
+      <TopBar patients={patients} selected={selected} onSelect={pick} disabled={resetting} view={view} safety={safety}
+        onReset={() => setConfirmReset(true)} />
       <div className="flex items-stretch border-b border-line bg-panel">
         <div className="min-w-0 flex-1"><FlowStepper steps={steps} current={step} onGo={setStep} /></div>
         <div className="flex shrink-0 items-center gap-1 border-l border-line px-3">
@@ -159,7 +219,7 @@ export default function App() {
             <div className="mx-auto max-w-[1180px] space-y-4">
               <AskCard question={question} setQuestion={setQuestion} onRun={run} running={running} notice={notice}
                 active={active && active.id !== view.id ? active : null} onWatch={watch} onReset={() => setQuestion(selected.question)} />
-              <PatientView patient={selected} />
+              <PatientView patient={selected} refresh={epoch} />
             </div>
           </StepPage>
         )}
@@ -172,7 +232,7 @@ export default function App() {
             secondary={running ? "Keep watching; the brief opens when the gate accepts it." : view.error ? <span className="text-oracle">{view.error}</span> : null}>
             <div className="grid h-full min-h-[560px] grid-cols-1 gap-4 xl:grid-cols-[1.1fr_1fr] 2xl:grid-cols-[1.25fr_1fr]">
               <div className="scroll-thin min-h-0 overflow-y-auto pr-1">
-                <RunTimeline view={view} question={view.meta?.question ?? question} patientName={selected?.display_name ?? ""} />
+                <RunTimeline view={view} question={view.meta?.question ?? question} patientName={runPatient?.display_name ?? ""} />
               </div>
               <div className="min-h-[520px]"><SandboxConsole lines={view.console} live={running} defaultFilter="agents" /></div>
             </div>
@@ -185,19 +245,19 @@ export default function App() {
             primary={{ label: actionCounts.pending ? `Review ${actionCounts.pending} proposed actions` : "Go to actions", onClick: () => setStep("actions") }}
             secondary={view.verified?.passed ? <span className="flex items-center gap-1.5 text-moss"><ShieldCheck className="size-3.5" /> verified · {view.verified.citations} citations · Word and Markdown export above the document</span> : null}>
             <div className="h-full min-h-[600px]">
-              <Suspense fallback={null}>
-                <BriefViewer brief={view.brief} runId={view.id} running={running} patientName={selected?.display_name} wide />
-              </Suspense>
+              <PanelBoundary><Suspense fallback={null}>
+                <BriefViewer brief={view.brief} runId={view.id} running={running} patientName={runPatient?.display_name} wide />
+              </Suspense></PanelBoundary>
             </div>
           </StepPage>
         )}
 
         {step === "actions" && selected && (
           <StepPage eyebrow="Step 4 · actions, with you in the loop" title="Review what the agent proposes"
-            lead={<>The care coordinator can only propose. You approve or reject each card; on approval the database executes it (a lab order, a portal message, an appointment request) and audits every step. Nothing real is sent: every patient is synthetic.</>}
+            lead={<>The agents can only propose. You approve or reject each card; on approval the database executes it (a lab order, a portal message, an appointment request) and audits every step. Policy decides who may do what: the database refuses a medication change from the care coordinator, so it escalates to the medication-safety agent, and only the doctor can approve that agent's proposal. Nothing real is sent: every patient is synthetic.</>}
             primary={{ label: "See what the agent will remember", onClick: () => setStep("memory") }}
             secondary={`${actionCounts.pending} awaiting you · ${actionCounts.decided} decided`}>
-            <div className="mx-auto max-w-[980px]"><ActionsPanel patientKey={selected.key} refreshKey={`${view.status}:${proposals}:${step}`} /></div>
+            <div className="mx-auto max-w-[980px]"><ActionsPanel patientKey={selected.key} refreshKey={`${view.status}:${proposals}:${step}`} onDecided={() => setDecisions((d) => d + 1)} onLoaded={countActions} /></div>
           </StepPage>
         )}
 
@@ -218,6 +278,34 @@ export default function App() {
         )}
       </main>
 
+      {confirmReset && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/30 backdrop-blur-[2px]" onClick={() => !resetting && setConfirmReset(false)}>
+          <div className="w-[520px] rounded-2xl border border-line bg-panel p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-oracle">Reset the demo</div>
+            <h2 className="mt-1 text-[18px] font-semibold">Clear everything and start again?</h2>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-[13px] text-ink-2">
+              <li>every proposed and decided care action, and its audit trail</li>
+              <li>the lab orders, portal messages and appointment requests they created</li>
+              <li>each patient's memory (OracleStore) and the agents' checkpoints (OracleSaver)</li>
+              <li>physician orders from approved medication changes (the medications return to active)</li>
+              <li>the runs this application remembers, stopping any run in progress</li>
+            </ul>
+            {(running || active) && (
+              <p className="mt-3 rounded-lg border border-ochre/30 bg-ochre-soft px-3 py-2 text-[12.5px] text-ink-2">A run is in progress: it will be stopped and its sandbox deleted first.</p>
+            )}
+            <p className="mt-3 text-[12.5px] text-ink-3">The synthetic charts, the reference stores and every configuration stay as they are.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button disabled={resetting} onClick={() => setConfirmReset(false)} className="rounded-lg border border-line px-3.5 py-2 text-[13px] text-ink-2 hover:text-ink">Cancel</button>
+              <button disabled={resetting} onClick={resetDemo} className="flex items-center gap-2 rounded-lg bg-oracle px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#b23d2d]">
+                {resetting ? <Sparkles className="size-4 animate-pulse" /> : null}{resetting ? "Resetting…" : "Reset the demo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-ink px-4 py-2.5 text-[12.5px] text-white shadow-xl">{toast}</div>
+      )}
       {inspect && (
         <Overlay title={inspect === "trace" ? "Agent trace" : inspect === "console" ? "OpenShell sandbox console" : "Safety"} onClose={() => setInspect(null)}>
           {inspect === "trace" && <AgentTrace events={view.events} />}

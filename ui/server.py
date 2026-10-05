@@ -32,8 +32,8 @@ from fastapi.responses import FileResponse, Response, StreamingResponse  # noqa:
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
-from common.config import agent_user, load_config, password  # noqa: E402
 from agent import memory as agent_memory  # noqa: E402
+from common.config import agent_user, load_config, password  # noqa: E402
 from data.patients import PATIENTS  # noqa: E402
 
 app = FastAPI(title="Deep Agents on Oracle AI Database")
@@ -130,10 +130,13 @@ async def chart(key: str) -> dict:
 # tables and EXECUTE DECIDE_CARE_ACTION, nothing else. The agent never can.
 
 CLINICIAN = "DA_CLINICIAN"
+PHYSICIAN = "DA_PHYSICIAN"
+ROLES = {"clinician": CLINICIAN, "physician": PHYSICIAN}
 
 
-def clinician_conn():
-    return oracledb.connect(user=CLINICIAN, password=password(CLINICIAN), dsn=load_config()["dsn"])
+def clinician_conn(role: str = "clinician"):
+    user = ROLES[role]
+    return oracledb.connect(user=user, password=password(user), dsn=load_config()["dsn"])
 
 
 def list_actions(key: str) -> list[dict]:
@@ -142,23 +145,26 @@ def list_actions(key: str) -> list[dict]:
         cur = conn.cursor()
         cur.execute(
             "SELECT id, kind, status, title, rationale, citations, JSON_SERIALIZE(payload), proposed_by, "
-            "TO_CHAR(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), result_table, result_id, result_summary, run_id "
+            "TO_CHAR(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), result_table, result_id, result_summary, run_id, "
+            "policy_code, required_role, proposed_agent, escalation_id "
             "FROM DA_OWNER.care_action WHERE patient_id = :p ORDER BY created_at DESC FETCH FIRST 30 ROWS ONLY", p=pid)
         rows = cur.fetchall()
         out = []
-        for (aid, kind, status, title, rationale, cites, payload, by, at, rtab, rid, rsum, run_id) in rows:
+        for (aid, kind, status, title, rationale, cites, payload, by, at, rtab, rid, rsum, run_id, pcode, prole, pagent, esc) in rows:
             cur.execute("SELECT status, actor, TO_CHAR(at, 'YYYY-MM-DD\"T\"HH24:MI:SS'), note FROM DA_OWNER.care_action_event "
                         "WHERE action_id = :a ORDER BY id", a=aid)
             events = [{"status": s_, "actor": a_, "at": t_, "note": n_} for s_, a_, t_, n_ in cur.fetchall()]
             out.append({"id": aid, "kind": kind, "status": status, "title": title, "rationale": rationale,
                         "citations": cites or "", "payload": json.loads(payload or "{}"), "proposed_by": by,
                         "created_at": at, "run_id": run_id, "events": events,
+                        "policy_code": pcode, "required_role": prole,
+                        "proposed_agent": pagent, "escalation_id": esc,
                         "result": {"table": rtab, "id": rid, "summary": rsum} if rtab else None})
         return out
 
 
-def decide(action_id: int, decision: str, payload: dict | None, note: str | None) -> None:
-    with clinician_conn() as conn:
+def decide(action_id: int, decision: str, payload: dict | None, note: str | None, role: str = "clinician") -> None:
+    with clinician_conn(role) as conn:
         cur = conn.cursor()
         cur.callproc("DA_OWNER.DECIDE_CARE_ACTION",
                      [action_id, decision, json.dumps(payload) if payload else None, note])
@@ -166,7 +172,7 @@ def decide(action_id: int, decision: str, payload: dict | None, note: str | None
         pid, title, result = cur.fetchone()
     # The decision becomes part of the agent's memory of this patient, so the
     # next brief knows what was approved, executed, or rejected.
-    with_agent_store(pid[-1], lambda store: agent_memory.remember_decision(store, pid, action_id, title, decision, result))
+    with_agent_store(pid[-1], lambda store: agent_memory.remember_decision(store, pid, action_id, title, decision, result, role))
 
 
 def with_agent_store(key: str, fn):
@@ -197,12 +203,13 @@ async def actions(key: str) -> list[dict]:
     try:
         return await asyncio.to_thread(list_actions, key)
     except oracledb.DatabaseError as exc:
-        raise HTTPException(503, str(exc).splitlines()[0][:200])
+        raise HTTPException(503, str(exc).splitlines()[0][:200]) from exc
 
 
 class Decision(BaseModel):
     payload: dict | None = None
     note: str | None = Field(default=None, max_length=500)
+    role: str = Field(default="clinician", pattern="^(clinician|physician)$")
 
 
 @app.post("/api/actions/{action_id}/{decision}")
@@ -210,10 +217,76 @@ async def decide_action(action_id: int, decision: str, body: Decision) -> dict:
     if decision not in ("approve", "reject"):
         raise HTTPException(400, "decision must be approve or reject")
     try:
-        await asyncio.to_thread(decide, action_id, decision, body.payload, body.note)
+        await asyncio.to_thread(decide, action_id, decision, body.payload, body.note, body.role)
     except oracledb.DatabaseError as exc:
-        raise HTTPException(409, str(exc).splitlines()[0][:300])
+        raise HTTPException(409, str(exc).splitlines()[0][:300]) from exc
     return {"id": action_id, "decision": decision}
+
+
+@app.get("/api/policies")
+async def policies() -> list[dict]:
+    def read():
+        with clinician_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT code, kind, required_role, allowed_proposer, rule_text FROM DA_OWNER.care_policy ORDER BY code")
+            return [{"code": c, "kind": k, "required_role": r, "allowed_proposer": a, "rule": t}
+                    for c, k, r, a, t in cur.fetchall()]
+    return await asyncio.to_thread(read)
+
+
+def policy_log(key: str) -> dict:
+    pid = PATIENTS[key]["id"]
+    with clinician_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, run_id, from_agent, to_agent, policy_code, subject, reason, citations, status, "
+                    "resolution, action_id, TO_CHAR(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') "
+                    "FROM DA_OWNER.agent_escalation WHERE patient_id = :p ORDER BY id DESC FETCH FIRST 30 ROWS ONLY", p=pid)
+        cols = ("id", "run_id", "from_agent", "to_agent", "policy_code", "subject", "reason", "citations", "status",
+                "resolution", "action_id", "created_at")
+        escalations = [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+        cur.execute("SELECT id, run_id, agent, policy_code, decision, detail, TO_CHAR(at, 'YYYY-MM-DD\"T\"HH24:MI:SS') "
+                    "FROM DA_OWNER.policy_event WHERE patient_id = :p ORDER BY id DESC FETCH FIRST 50 ROWS ONLY", p=pid)
+        cols = ("id", "run_id", "agent", "policy_code", "decision", "detail", "at")
+        events = [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+    return {"escalations": escalations, "events": events}
+
+
+@app.get("/api/patients/{key}/policy")
+async def patient_policy(key: str) -> dict:
+    """The agents' escalations and every policy decision about them, from the database."""
+    if key not in PATIENTS:
+        raise HTTPException(404, "unknown patient")
+    return await asyncio.to_thread(policy_log, key)
+
+
+async def _stop(run: Run) -> None:
+    """Stop a run: SIGTERM lets scripts/sandbox.sh's trap delete its sandbox."""
+    run.status = "cancelled"
+    await _append(run, {"channel": "console", "line": "\x1b[1;33m# web app → reset: stopping this run and deleting its sandbox\x1b[0m"})
+    if run.proc and run.proc.returncode is None:
+        run.proc.terminate()
+        try:
+            await asyncio.wait_for(run.proc.wait(), timeout=30)
+        except TimeoutError:
+            run.proc.kill()
+    await asyncio.wait_for(run.done.wait(), timeout=30)
+
+
+@app.post("/api/demo/reset")
+async def reset_demo() -> dict:
+    """Clear everything and start the demo again: stop any run in progress
+    (its sandbox is deleted), then clear every run, care action, outbox row,
+    physician order, memory and checkpoint. The charts and reference stores stay."""
+    stopped = 0
+    for r in list(RUNS.values()):
+        if r.status == "running":
+            await _stop(r)
+            stopped += 1
+    from db.reset_workflow import reset
+
+    counts = await asyncio.to_thread(reset, lambda *_: None)
+    RUNS.clear()
+    return {"reset": True, "runs stopped": stopped, **counts}
 
 
 @app.get("/api/safety")
@@ -246,6 +319,7 @@ class Run:
     status: str = "running"
     lines: list[dict] = field(default_factory=list)
     brief: str | None = None
+    proc: asyncio.subprocess.Process | None = None
     done: asyncio.Event = field(default_factory=asyncio.Event)
     changed: asyncio.Condition = field(default_factory=asyncio.Condition)
 
@@ -292,14 +366,15 @@ async def _execute(run: Run) -> None:
     if run.question:
         cmd.append(run.question)
     await _append(run, {"channel": "console", "line": f"\x1b[1;36m# web app → scripts/sandbox.sh run {run.patient}\x1b[0m"})
-    proc = await asyncio.create_subprocess_exec(
+    proc = run.proc = await asyncio.create_subprocess_exec(
         *cmd, cwd=ROOT, stdin=asyncio.subprocess.DEVNULL, env={**os.environ, "DA_RUN_ID": run.id},
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
     )
     with open(run_dir / "events.jsonl", "w") as ev, open(run_dir / "console.log", "w") as con:
         await asyncio.gather(_pump(run, proc.stdout, "agent", ev), _pump(run, proc.stderr, "console", con))
     code = await proc.wait()
-    run.status = "succeeded" if code == 0 and run.brief else ("blocked" if code == 2 else "failed")
+    if run.status != "cancelled":
+        run.status = "succeeded" if code == 0 and run.brief else ("blocked" if code == 2 else "failed")
     if run.brief:
         (run_dir / f"brief-{run.patient}.md").write_text(run.brief)
     await _append(run, {"channel": "status", "status": run.status, "exit_code": code})

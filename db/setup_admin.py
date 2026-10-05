@@ -43,7 +43,8 @@ ONNX_DIR_URI = (
 )
 ONNX_FILE = "all_MiniLM_L12_v2.onnx"
 CLINICIAN = "DA_CLINICIAN"  # approves care actions in the web application
-DEMO_USERS = [OWNER, CLINICIAN] + [agent_user(k) for k in PATIENT_KEYS]
+PHYSICIAN = "DA_PHYSICIAN"  # the only role that may approve what policy reserves for a doctor
+DEMO_USERS = [OWNER, CLINICIAN, PHYSICIAN] + [agent_user(k) for k in PATIENT_KEYS]
 
 
 def new_password() -> str:
@@ -111,6 +112,7 @@ def setup(cur) -> None:
     # The clinician may sign in and nothing more until migration 0006 grants
     # EXECUTE on DECIDE_CARE_ACTION and SELECT on the workflow tables.
     cur.execute(f"GRANT CREATE SESSION TO {CLINICIAN}")
+    cur.execute(f"GRANT CREATE SESSION TO {PHYSICIAN}")
     print("  grants and vector-table synonyms in place")
 
 

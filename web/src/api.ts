@@ -34,7 +34,7 @@ export type Safety = {
 };
 
 export type AgentEvent = {
-  type: "start" | "plan" | "delegate" | "tool" | "tool_result" | "brief" | "done" | "error" | "blocked" | "verify" | "nudge" | "thought" | "memory" | "checkpoints";
+  type: "start" | "plan" | "delegate" | "tool" | "tool_result" | "brief" | "done" | "error" | "blocked" | "verify" | "nudge" | "thought" | "memory" | "checkpoints" | "policy" | "escalation";
   t: number;
   agent?: string;
   [key: string]: unknown;
