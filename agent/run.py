@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from agent import db as agent_db  # noqa: E402
 from agent import memory as agent_memory
 from agent import settings as settings_mod
 from agent import verify
@@ -270,9 +271,8 @@ def main() -> int:
     started = time.time()
     state = {"task_names": {}, "pending": [], "files": {}, "structured": None,
              "counts": {"tool_calls": 0, "delegations": 0, "sql": 0, "searches": 0}}
-    import oracledb
 
-    db = oracledb.connect(user=cfg.db_user, password=cfg.db_password, dsn=cfg.dsn)
+    db = agent_db.connect(user=cfg.db_user, password=cfg.db_password, dsn=cfg.dsn)
     config = {"recursion_limit": 400, "configurable": {"thread_id": f"brief-{cfg.patient_key}-{run_id}"}}
     try:
         consume(agent, question + PLAN_FIRST, config, state)

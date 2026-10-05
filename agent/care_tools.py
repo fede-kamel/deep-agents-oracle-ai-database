@@ -24,6 +24,8 @@ from typing import Literal
 
 from langchain_core.tools import tool
 
+from agent import db
+
 COORDINATOR = "care-coordinator"
 MEDICATION_SAFETY = "medication-safety"
 MAX_PER_RUN = 5
@@ -43,6 +45,22 @@ def _first_line(exc: Exception) -> str:
     return str(exc).splitlines()[0][:300]
 
 
+def _db_safe(fn):
+    """A database hiccup becomes a tool answer the agent can act on, not a
+    crash that ends the whole run."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        import oracledb
+
+        try:
+            return fn(*args, **kwargs)
+        except oracledb.Error as exc:
+            return f"The database was unreachable for a moment ({_first_line(exc)[:120]}). Call this tool again."
+    return wrapper
+
+
 class _Care:
     """Shared connection and proposal logic for one agent in one run."""
 
@@ -52,9 +70,7 @@ class _Care:
         self.run_id = os.environ.get("DA_RUN_ID", "local")
 
     def connect(self):
-        import oracledb
-
-        conn = oracledb.connect(user=self.user, password=self.password, dsn=self.dsn)
+        conn = db.connect(user=self.user, password=self.password, dsn=self.dsn)
         conn.client_identifier = self.agent
         return conn
 
@@ -109,6 +125,7 @@ def build_care_tools(dsn: str, user: str, password: str, patient_id: str):
     care = _Care(dsn, user, password, patient_id, COORDINATOR)
 
     @tool
+    @_db_safe
     def list_care_actions() -> str:
         """List every care action ever proposed for this patient, newest first:
         id, kind, status (proposed, needs_physician, approved, executed,
@@ -117,6 +134,7 @@ def build_care_tools(dsn: str, user: str, password: str, patient_id: str):
         return care.list_actions()
 
     @tool
+    @_db_safe
     def propose_lab_request(tests: list[str], urgency: Literal["routine", "soon", "urgent"], reason: str, citations: str) -> str:
         """Propose a lab request for this patient, for the clinician to approve.
 
@@ -129,6 +147,7 @@ def build_care_tools(dsn: str, user: str, password: str, patient_id: str):
                             {"tests": tests, "urgency": urgency, "before_visit": urgency != "routine"})[1]
 
     @tool
+    @_db_safe
     def draft_patient_message(subject: str, body: str, reason: str, citations: str) -> str:
         """Draft a portal message to the patient, for the clinician to approve.
 
@@ -142,6 +161,7 @@ def build_care_tools(dsn: str, user: str, password: str, patient_id: str):
                             {"subject": subject, "body": body, "to": "the patient (portal, simulated)"})[1]
 
     @tool
+    @_db_safe
     def propose_follow_up(within_days: int, visit_type: str, reason: str, citations: str) -> str:
         """Propose a follow-up appointment within a number of days, for the clinician to approve.
 
@@ -153,6 +173,7 @@ def build_care_tools(dsn: str, user: str, password: str, patient_id: str):
                             {"within_days": days, "visit_type": visit_type})[1]
 
     @tool
+    @_db_safe
     def propose_medication_change(medication: str, change: Literal["hold", "stop", "reduce", "start"], reason: str, citations: str) -> str:
         """Propose a medication change (hold, stop, reduce, start) for the
         chart's most important medication-safety concern.
@@ -165,6 +186,7 @@ def build_care_tools(dsn: str, user: str, password: str, patient_id: str):
                             {"medication": medication, "change": change})[1]
 
     @tool
+    @_db_safe
     def escalate_to_agent(to_agent: Literal["medication-safety"], subject: str, reason: str, citations: str) -> str:
         """Hand an action the database refused you to the agent that may take it.
 
@@ -216,6 +238,7 @@ def build_medication_safety_tools(dsn: str, user: str, password: str, patient_id
         return row[0] if row else None
 
     @tool
+    @_db_safe
     def list_escalations() -> str:
         """List the escalations addressed to you for this patient, newest first:
         id, status (open, accepted, declined), who raised it, subject, reason
@@ -231,6 +254,7 @@ def build_medication_safety_tools(dsn: str, user: str, password: str, patient_id
         return "\n".join(f"#{i} [{st}] from {f}: {s}\n  reason: {r}\n  citations: {c}" for i, st, f, s, r, c in rows)
 
     @tool
+    @_db_safe
     def list_care_actions() -> str:
         """List every care action ever proposed for this patient, newest first,
         with its status. Never propose a change that is already pending,
@@ -238,6 +262,7 @@ def build_medication_safety_tools(dsn: str, user: str, password: str, patient_id
         return care.list_actions()
 
     @tool
+    @_db_safe
     def propose_medication_change(escalation_id: int, medication: str, change: Literal["hold", "stop", "reduce", "start"],
                                   reason: str, citations: str) -> str:
         """Accept an open escalation by proposing one medication change.
@@ -259,6 +284,7 @@ def build_medication_safety_tools(dsn: str, user: str, password: str, patient_id
                 "Status: needs_physician (policy CP-02): only the doctor can approve it.")
 
     @tool
+    @_db_safe
     def decline_escalation(escalation_id: int, reason: str) -> str:
         """Close an open escalation without a change, when your review finds no
         safety concern the chart supports. reason: why, with citations."""

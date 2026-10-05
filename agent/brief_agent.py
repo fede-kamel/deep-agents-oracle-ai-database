@@ -32,6 +32,7 @@ from langchain_oci.datastores import ADB, create_datastore_tools
 from langchain_openai import ChatOpenAI
 from langchain_oracledb.embeddings import OracleEmbeddings
 
+from agent import db as agent_db
 from agent import memory as agent_memory
 from agent.brief_schema import PreVisitBrief
 from agent.care_tools import build_care_tools, build_medication_safety_tools
@@ -308,11 +309,10 @@ def build_agent(settings: Settings, *, display_name: str | None = None, first_na
 
     state holds the OracleSaver checkpointer and the OracleStore memory, both
     in the agent user's own schema (agent/memory.py)."""
-    import oracledb
 
     pid = settings.patient_id
     display = display_name or f"Patient {settings.patient_key}"
-    conn = oracledb.connect(user=settings.db_user, password=settings.db_password, dsn=settings.dsn)
+    conn = agent_db.connect(user=settings.db_user, password=settings.db_password, dsn=settings.dsn)
     embeddings = OracleEmbeddings(conn=conn, params={"provider": "database", "model": EMBEDDING_MODEL})
     stores_to_close: list[ADB] = []
     checkpointer, store, close_state = agent_memory.open_state(settings.dsn, settings.db_user, settings.db_password, embeddings)

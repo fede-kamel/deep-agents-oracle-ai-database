@@ -21,6 +21,8 @@ from langchain_community.utilities import SQLDatabase
 from langchain_core.tools import tool
 from sqlalchemy import create_engine, text
 
+from agent import db as agent_db
+
 CHART_TABLES = [
     "patient", "condition", "allergy", "medication", "encounter", "clinical_note",
     "lab_result", "vital_sign", "referral", "appointment", "cohort_benchmark",
@@ -42,7 +44,7 @@ def _cell(value):
 def build_sql_tools(dsn: str, user: str, password: str):
     engine = create_engine(
         "oracle+oracledb://",
-        connect_args={"user": user, "password": password, "dsn": dsn},
+        creator=lambda: agent_db.connect(user=user, password=password, dsn=dsn),
         pool_pre_ping=True,
     )
     db = SQLDatabase(engine, schema="DA_OWNER", include_tables=CHART_TABLES, sample_rows_in_table_info=2)

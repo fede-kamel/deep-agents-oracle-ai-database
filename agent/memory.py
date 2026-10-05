@@ -45,12 +45,13 @@ def _serde():
 
 def open_state(dsn: str, user: str, password: str, embeddings):
     """Return (checkpointer, store, close) for the agent user's own schema."""
-    import oracledb
     from langgraph_oracledb.checkpoint.oracle import OracleSaver
     from langgraph_oracledb.store.oracle import OracleStore
 
-    saver_conn = oracledb.connect(user=user, password=password, dsn=dsn)
-    store_conn = oracledb.connect(user=user, password=password, dsn=dsn)
+    from agent import db
+
+    saver_conn = db.connect(user=user, password=password, dsn=dsn)
+    store_conn = db.connect(user=user, password=password, dsn=dsn)
     saver = OracleSaver(saver_conn, serde=_serde())
     saver.setup()  # idempotent
     store = OracleStore(
