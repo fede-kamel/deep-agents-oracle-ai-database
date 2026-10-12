@@ -1,22 +1,16 @@
 import clsx from "clsx";
-import { Network, ShieldCheck, ShieldX, SquareTerminal } from "lucide-react";
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { SquareTerminal } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { agentMeta } from "../agents";
+import { Panel } from "./Panel";
 
-type Filter = "all" | "agents" | "network" | "lifecycle";
+type Filter = "agents" | "network" | "all";
 
-// The console carries ANSI colour codes from OpenShell; matching ESC is the point.
+// The console carries ANSI colour codes from the run script; matching ESC is the point.
 // oxlint-disable-next-line no-control-regex
 const ANSI_TOKEN = /\x1b\[([0-9;]*)m/g;
-const SGR: Record<string, string> = {
-  "1": "font-semibold",
-  "31": "text-[#ff6b6b]",
-  "32": "text-[#7ee787]",
-  "33": "text-[#e3b341]",
-  "36": "text-[#79c0ff]",
-};
+const SGR: Record<string, string> = { "1": "font-semibold", "31": "text-[#ff6b6b]", "32": "text-[#7ee787]", "33": "text-[#e3b341]", "36": "text-[#79c0ff]" };
 
-// Split a line into spans: ANSI colours from the script, then highlights for
-// the gateway's network decisions.
 function renderLine(raw: string) {
   const parts: { text: string; cls: string }[] = [];
   let cls = "";
@@ -43,29 +37,6 @@ function highlight(text: string) {
   });
 }
 
-const AGENT_TAG: Record<string, string> = {
-  lead: "bg-[#2d3a5c] text-[#c8d3f5]",
-  "chart-analyst": "bg-[#123c45] text-[#7fd1e0]",
-  "guideline-researcher": "bg-[#25381c] text-[#a6e08a]",
-  "evidence-researcher": "bg-[#33244d] text-[#d2a8ff]",
-  "care-coordinator": "bg-[#4a3511] text-[#f2c46d]",
-  "medication-safety": "bg-[#4d1a14] text-[#ff9b8a]",
-  runner: "bg-[#1f3d29] text-[#7ee787]",
-};
-
-function AgentLine({ line }: { line: string }) {
-  const m = line.match(/^\[agent:([a-z-]+)\] (.*)$/);
-  if (!m) return <>{line}</>;
-  const [, who, rest] = m;
-  const isResult = rest.startsWith("  →") || rest.startsWith("←");
-  return (
-    <>
-      <span className={clsx("mr-2 rounded px-1.5 py-px text-[10.5px] font-semibold", AGENT_TAG[who] ?? "bg-[#30363d] text-white")}>{who}</span>
-      <span className={clsx(isResult ? "text-[#8b949e]" : rest.startsWith("SQL") ? "text-[#7fd1e0]" : rest.startsWith("thinking") ? "italic text-[#a5b4cf]" : "text-[#e6edf3]")}>{rest}</span>
-    </>
-  );
-}
-
 // Gateway lines arrive as `[1791833071.222] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED …`.
 // Keep what a reader needs: the time of day, the decision, the process and
 // the destination; drop the bookkeeping (mapping ids, engine tags, log level).
@@ -85,31 +56,44 @@ function tidy(line: string): string {
   return `${clock}  ${rest}`;
 }
 
-function classify(line: string): Filter | "noise" {
+/** An agent's step. Long ones (a delegation, a thought) show three rows and
+ * open in full on a click; the text itself is never cut. */
+function AgentLine({ line }: { line: string }) {
+  const [open, setOpen] = useState(false);
+  const m = line.match(/^\[agent:([a-z-]+)\] (.*)$/);
+  if (!m) return <>{line}</>;
+  const [, who, rest] = m;
+  const meta = agentMeta(who);
+  const isResult = rest.startsWith("  →") || rest.startsWith("←");
+  const long = rest.length > 320;
+  return (
+    <div className={clsx("flex items-start gap-2", long && "cursor-pointer")} onClick={long ? () => setOpen((o) => !o) : undefined} title={long && !open ? "Click to show the whole step" : undefined}>
+      <span className="mt-[3px] shrink-0 rounded px-1.5 py-px text-[10.5px] font-semibold leading-[1.4]" style={{ color: meta.tint, background: meta.color }}>{who}</span>
+      <span className={clsx("min-w-0 whitespace-pre-wrap break-words", long && !open && "line-clamp-3",
+        isResult ? "text-[#8b949e]" : rest.startsWith("SQL") ? "text-[#7fd1e0]" : rest.startsWith("thinking") ? "italic text-[#a5b4cf]" : "text-[#e6edf3]")}>{rest}</span>
+    </div>
+  );
+}
+
+function classify(line: string): Filter | "lifecycle" {
   if (line.startsWith("[agent:")) return "agents";
-  if (/GetSandbox|Settings poll|relay (stream|opened|closed)|supervisor session|ssh relay|metadata\.id index|error-help\/db\/ora-41900|Flushed activity summary/.test(line)) return "noise";
   if (/NET:|HTTP:|Policy DNS|DENIED|ALLOWED/.test(line)) return "network";
   return "lifecycle";
 }
 
-export const SandboxConsole = memo(function SandboxConsole({ lines, live, extra, defaultFilter = "all" }: { lines: string[]; live: boolean; extra?: ReactNode; defaultFilter?: Filter }) {
-  const [filter, setFilter] = useState<Filter>(defaultFilter);
-  const [showNoise, setShowNoise] = useState(false);
+/** Every agent step, written from inside the sandbox, next to the network
+ * decision the gateway made for it. One switch: agents, network, everything. */
+export const SandboxConsole = memo(function SandboxConsole({ lines, live }: { lines: string[]; live: boolean }) {
+  const [filter, setFilter] = useState<Filter>("agents");
   const box = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
 
-  const shown = useMemo(
-    () =>
-      lines.filter((l) => {
-        const c = classify(l);
-        if (c === "noise") return showNoise;
-        return filter === "all" || c === filter;
-      }),
-    [lines, filter, showNoise],
-  );
-  const allowed = useMemo(() => lines.filter((l) => /ALLOWED/.test(l)).length, [lines]);
-  const agentLines = useMemo(() => lines.filter((l) => l.startsWith("[agent:")).length, [lines]);
-  const denied = useMemo(() => lines.filter((l) => /DENIED/.test(l)).length, [lines]);
+  const shown = useMemo(() => (filter === "all" ? lines : lines.filter((l) => classify(l) === filter)), [lines, filter]);
+  const counts = useMemo(() => ({
+    agents: lines.filter((l) => l.startsWith("[agent:")).length,
+    allowed: lines.filter((l) => /ALLOWED/.test(l)).length,
+    denied: lines.filter((l) => /DENIED/.test(l)).length,
+  }), [lines]);
 
   useEffect(() => {
     const el = box.current;
@@ -117,62 +101,29 @@ export const SandboxConsole = memo(function SandboxConsole({ lines, live, extra,
   }, [shown.length]);
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[#2a2a2a] bg-term shadow-[0_20px_40px_-24px_rgb(0_0_0/.55)]">
-      <header className="flex items-center gap-3 border-b border-[#262626] bg-term-2 px-3.5 py-2">
-        <div className="flex gap-1.5">
-          <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-          <span className="size-2.5 rounded-full bg-[#febc2e]" />
-          <span className="size-2.5 rounded-full bg-[#28c840]" />
+    <Panel dark className="h-full"
+      title={<><SquareTerminal className="size-3.5 text-[#7ee787]" /> Sandbox console {live && <span className="live-dot ml-1 size-1.5 rounded-full bg-oracle" />}</>}
+      meta={<span>{counts.agents} agent steps · <span className="text-[#7ee787]">{counts.allowed} allowed</span> · <span className={counts.denied ? "text-[#ff7b72]" : undefined}>{counts.denied} denied</span></span>}
+      actions={
+        <div className="flex overflow-hidden rounded-md border border-[#30363d] font-mono text-xs">
+          {(["agents", "network", "all"] as Filter[]).map((f) => (
+            <button key={f} onClick={() => setFilter(f)} className={clsx("px-2.5 py-1 capitalize", filter === f ? "bg-[#30363d] text-white" : "text-[#8b949e] hover:text-white")}>{f}</button>
+          ))}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-mono text-[11.5px] text-[#c9d1d9]">
-          <SquareTerminal className="size-3.5 text-[#7ee787]" /> OpenShell sandbox console
-          {live && <span className="live-dot ml-1 size-1.5 rounded-full bg-oracle" />}
-        </div>
-        <div className="ml-auto flex items-center gap-1 whitespace-nowrap font-mono text-[11px]">
-          <span className="flex items-center gap-1 rounded-md bg-[#2d3a5c] px-2 py-0.5 text-[#c8d3f5]">{agentLines} agent steps</span>
-          <span className="flex items-center gap-1 rounded-md bg-[#1f3d29] px-2 py-0.5 text-[#7ee787]">
-            <ShieldCheck className="size-3" /> {allowed} allowed
-          </span>
-          <span className={clsx("flex items-center gap-1 rounded-md px-2 py-0.5", denied ? "bg-[#4a1f1f] text-[#ff7b72]" : "bg-[#262626] text-[#8b949e]")}>
-            <ShieldX className="size-3" /> {denied} denied
-          </span>
-          <div className="ml-2 flex overflow-hidden rounded-md border border-[#30363d]">
-            {(["all", "agents", "network", "lifecycle"] as Filter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={clsx("px-2 py-0.5 capitalize", filter === f ? "bg-[#30363d] text-white" : "text-[#8b949e] hover:text-white")}
-              >
-                {f === "network" ? <span className="flex items-center gap-1"><Network className="size-3" />network</span> : f}
-              </button>
-            ))}
-          </div>
-          <label className="ml-2 flex cursor-pointer items-center gap-1 text-[#8b949e]">
-            <input type="checkbox" className="accent-[#7ee787]" checked={showNoise} onChange={(e) => setShowNoise(e.target.checked)} />
-            gRPC
-          </label>
-          {extra && <div className="ml-2">{extra}</div>}
-        </div>
-      </header>
-      <div
-        ref={box}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-        }}
-        className="scroll-term min-h-0 flex-1 overflow-y-auto px-4 py-3 font-mono text-[11.5px] leading-[1.6] text-[#c9d1d9]"
-      >
+      }
+      bodyClassName="flex flex-col">
+      <div ref={box}
+        onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}
+        className="scroll-term min-h-0 flex-1 overflow-y-auto px-4 py-3 font-mono text-sm leading-[1.7] text-[#c9d1d9]">
         {shown.length === 0 && (
-          <div className="text-[#6e7681]">
-            {live ? "waiting for the sandbox…" : "Run a brief to watch the sandbox: every agent step from inside it, next to each network decision the gateway makes."}
-          </div>
+          <div className="text-[#6e7681]">{live ? "Waiting for the sandbox…" : "Nothing in this view yet."}</div>
         )}
         {shown.map((l, i) => (
-          <div key={i} className={clsx("whitespace-pre-wrap break-all", l.startsWith("[agent:") && "border-l-2 border-[#3b4252] pl-2")}>
+          <div key={i} className={clsx("break-all", l.startsWith("[agent:") ? "border-l-2 border-[#3b4252] pl-2" : "whitespace-pre-wrap")}>
             {l.startsWith("[agent:") ? <AgentLine line={l} /> : renderLine(tidy(l.replace(/^\[openshell\] /, "")))}
           </div>
         ))}
       </div>
-    </section>
+    </Panel>
   );
 });

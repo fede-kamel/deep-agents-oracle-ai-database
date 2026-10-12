@@ -156,16 +156,16 @@ so the next brief knows what was approved, executed, or rejected.
 
 ## Watch the agents work
 
-The web application shows the work as it happens: the plan, each specialist's
-SQL, searches and proposals, the reasoning the models share, and the full
-**Agent trace** (every delegation, tool call with arguments and result, the
-gate's verdicts). The **sandbox console** interleaves each agent's steps,
-written from inside the sandbox, with the gateway's own network decisions, so
-a SQL query sits next to the `NET:OPEN … :1521` it caused and a model call next
-to its `HTTP:POST … /openai/v1/chat/completions`. The console runs full width
-and goes full screen; below it, one tab per specialist opens the moment the
-lead delegates, with its SQL, searches, proposals and report. Every panel goes
-full screen.
+The web application has five tabs, one per stage: the patient, the agents,
+the brief, the actions, the memory. **Agents** shows the sandbox console above
+and the run below: the lead's plan, one tab per specialist opened the moment
+the lead delegates to it (its request, what it returned, every SQL query and
+search with its full result), and a **Timeline** of every event. The console
+interleaves each agent's steps, written from inside the sandbox, with the
+gateway's own network decisions, so a SQL query sits next to the
+`NET:OPEN … :1521` it caused and a model call next to its
+`HTTP:POST … /openai/v1/chat/completions`. Every area goes full screen.
+Runs are kept on disk, so a restart of the server changes nothing on screen.
 
 ## Check every claim yourself
 
@@ -202,7 +202,7 @@ In every run the care coordinator tried a medication change, the database refuse
 |---|---|
 | ![Patient](docs/screenshots/01-patient.png) | ![Agents at work](docs/screenshots/02-agents-at-work.png) |
 | ![Brief](docs/screenshots/03-brief.png) | ![Actions](docs/screenshots/04-actions.png) |
-| ![Memory](docs/screenshots/05-memory.png) | ![Trace](docs/screenshots/06-inspect-trace.png) |
+| ![Memory](docs/screenshots/05-memory.png) | ![Timeline](docs/screenshots/06-timeline.png) |
 
 ## How agentic is it
 

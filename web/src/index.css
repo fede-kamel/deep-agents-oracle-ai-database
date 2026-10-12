@@ -3,65 +3,91 @@
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/600.css";
 
-/* Redwood-inspired tokens: warm neutrals, Oracle red as the one accent. */
+/* Warm neutrals, Oracle red as the one accent, five text sizes. Colour means
+ * something: red is the primary action or a refusal, green a pass, amber a
+ * decision still to take. Agent and citation hues live in agents.ts / cite.tsx. */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --text-xs: 11px;
+  --text-xs--line-height: 1.45;
+  --text-sm: 12.5px;
+  --text-sm--line-height: 1.5;
+  --text-base: 13.5px;
+  --text-base--line-height: 1.6;
+  --text-lg: 16px;
+  --text-lg--line-height: 1.4;
+  --text-xl: 22px;
+  --text-xl--line-height: 1.25;
+
   --color-ink: #161513;
   --color-ink-2: #3f3a36;
   --color-ink-3: #6f6964;
-  --color-paper: #fbf9f8;
+  --color-paper: #faf9f8;
   --color-panel: #ffffff;
-  --color-line: #e7e2de;
-  --color-sand: #f1efed;
+  --color-line: #e6e1dd;
+  --color-sand: #f2f0ee;
   --color-oracle: #c74634;
   --color-oracle-soft: #fbeae7;
+  --color-ok: #3f7d4f;
+  --color-ok-soft: #e9f2eb;
+  --color-warn: #a8701a;
+  --color-warn-soft: #fbf3e2;
   --color-teal: #2c5967;
   --color-teal-soft: #e6eff1;
   --color-moss: #5f7d4f;
   --color-moss-soft: #edf3e8;
-  --color-ochre: #b07d1f;
+  --color-ochre: #a8701a;
   --color-ochre-soft: #fbf3e2;
   --color-violet: #6b4fa0;
   --color-violet-soft: #f0ecf7;
-  --color-term: #121212;
-  --color-term-2: #1b1b1b;
+  --color-term: #141414;
+  --color-term-2: #1d1d1d;
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-paper text-ink font-sans antialiased; font-feature-settings: "cv11", "ss01"; }
-
+body { @apply bg-paper font-sans text-base text-ink antialiased; font-feature-settings: "cv11", "ss01"; }
 ::selection { background: color-mix(in srgb, var(--color-oracle) 22%, transparent); }
 
 .scroll-thin { scrollbar-width: thin; scrollbar-color: #d6d0cb transparent; }
 .scroll-term { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
 
-/* The brief: a printed page, not a chat bubble. */
-.brief h1 { @apply text-[22px] font-semibold tracking-tight text-ink mb-2 leading-snug; }
-.brief h2 { @apply text-[13px] font-semibold uppercase tracking-[0.12em] text-oracle mt-6 mb-2; }
-.brief h3 { @apply text-sm font-semibold mt-4 mb-1; }
-.brief p, .brief li { @apply text-[13.5px] leading-[1.65] text-ink-2; }
-.brief ul { @apply list-disc pl-5 space-y-1.5; }
-.brief ol { @apply list-decimal pl-5 space-y-1.5; }
-.brief strong { @apply text-ink font-semibold; }
-.brief blockquote { @apply border-l-[3px] border-oracle bg-oracle-soft/60 px-3 py-2 rounded-r-md my-3 text-[12.5px] text-oracle font-medium; }
-.brief blockquote p { @apply text-oracle text-[12.5px]; }
-
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgb(199 70 52 / .45); } 70% { box-shadow: 0 0 0 7px rgb(199 70 52 / 0); } 100% { box-shadow: 0 0 0 0 rgb(199 70 52 / 0); } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgb(199 70 52 / .45); } 70% { box-shadow: 0 0 0 6px rgb(199 70 52 / 0); } 100% { box-shadow: 0 0 0 0 rgb(199 70 52 / 0); } }
 .live-dot { animation: pulse-ring 1.6s infinite; }
 
-.brief table { @apply my-3 w-full border-collapse overflow-hidden rounded-lg text-[12.5px]; }
-.brief thead th { @apply border-b border-line bg-sand px-2.5 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-3; }
+/* Markdown written by the system or an agent: memory, reports. */
+.prose { @apply text-base text-ink-2; }
+.prose > :first-child { margin-top: 0; }
+.prose p { margin: 0.4rem 0; }
+.prose strong { @apply font-semibold text-ink; }
+.prose ul, .prose ol { margin: 0.4rem 0; padding-left: 1.25rem; }
+.prose ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose li { margin: 0.2rem 0; }
+.prose h1 { @apply mt-4 mb-1 text-lg font-semibold text-ink; }
+.prose h2 { @apply mt-4 mb-1 text-sm font-semibold uppercase tracking-[0.08em] text-ink-3; }
+.prose h3, .prose h4 { @apply mt-3 mb-1 text-base font-semibold text-ink; }
+.prose code { @apply rounded bg-sand px-1 font-mono text-xs; }
+.prose pre { @apply my-2 overflow-x-auto rounded-md bg-sand p-3 font-mono text-xs; }
+.prose pre code { @apply bg-transparent p-0; }
+.prose blockquote { @apply my-2 border-l-2 border-line pl-3 text-ink-3; }
+.prose table { @apply my-2 w-full border-collapse text-sm; }
+.prose th { @apply border-b border-line px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide text-ink-3; }
+.prose td { @apply border-b border-line/70 px-2 py-1.5 align-top; }
+.prose hr { @apply my-3 border-line; }
+
+/* The brief: a printed page. */
+.brief h1 { @apply mb-2 text-xl font-semibold leading-snug tracking-tight text-ink; }
+.brief h2 { @apply mt-6 mb-2 text-sm font-semibold uppercase tracking-[0.1em] text-oracle; }
+.brief h3 { @apply mt-4 mb-1.5 text-base font-semibold text-ink; }
+.brief p, .brief li { @apply text-base text-ink-2; }
+.brief ul { @apply list-disc space-y-1.5 pl-5; }
+.brief ol { @apply list-decimal space-y-1.5 pl-5; }
+.brief strong { @apply font-semibold text-ink; }
+.brief blockquote { @apply my-3 rounded-r-md border-l-[3px] border-oracle bg-oracle-soft/60 px-3 py-2 text-sm font-medium text-oracle; }
+.brief blockquote p { @apply text-sm text-oracle; }
+.brief table { @apply my-3 w-full border-collapse overflow-hidden rounded-lg text-sm; }
+.brief thead th { @apply border-b border-line bg-sand px-2.5 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-ink-3; }
 .brief tbody td { @apply border-b border-line/70 px-2.5 py-2 align-top leading-snug text-ink-2; }
 .brief tbody tr:last-child td { @apply border-b-0; }
-.brief h3 { @apply text-[13px] font-semibold text-ink mt-4 mb-1.5; }
-
-/* A specialist's report, rendered from its Markdown in full. */
-.prose-report p { margin: 0.35rem 0; }
-.prose-report strong { color: var(--color-ink); font-weight: 600; }
-.prose-report ul, .prose-report ol { margin: 0.35rem 0; padding-left: 1.2rem; }
-.prose-report ul { list-style: disc; }
-.prose-report ol { list-style: decimal; }
-.prose-report li { margin: 0.15rem 0; }
-.prose-report h1, .prose-report h2, .prose-report h3, .prose-report h4 { margin: 0.6rem 0 0.25rem; font-size: 12.5px; font-weight: 600; color: var(--color-ink); }
-.prose-report code { font-family: ui-monospace, monospace; font-size: 11px; background: var(--color-sand); padding: 0 0.25rem; border-radius: 0.25rem; }
