@@ -6,7 +6,8 @@ import { ActionsPanel } from "./components/ActionsPanel";
 import { AgentTrace } from "./components/AgentTrace";
 import { FlowStepper, StepPage, type Step, type StepInfo } from "./components/Flow";
 import { PatientView } from "./components/PatientView";
-import { RunTimeline } from "./components/RunTimeline";
+import { AgentTabs } from "./components/AgentTabs";
+import { Maximizable, MaxButtons } from "./components/Maximizable";
 import { SandboxConsole } from "./components/SandboxConsole";
 import { SafetyView, TopBar } from "./components/Shell";
 
@@ -227,14 +228,14 @@ export default function App() {
         {step === "work" && (
           <StepPage eyebrow="Step 2 · agents at work, inside the sandbox"
             title={running ? "The agents are researching" : view.done ? "The agents have finished" : "No run yet"}
-            lead={<>The lead plans, then hands the work to specialists: one reads the chart with SQL, two search the reference and PubMed stores, one proposes actions. On the right, the sandbox console: each agent's step, written from inside the sandbox, next to the network decision it caused.</>}
+            lead={<>The lead plans, then hands the work to specialists: one reads the chart with SQL, two search the reference and PubMed stores, one proposes actions. Above, the sandbox console: each agent's step, written from inside the sandbox, next to the network decision it caused. Below, one tab per specialist, opened as the lead delegates.</>}
             primary={view.brief ? { label: "Read the brief", onClick: () => setStep("brief") } : undefined}
             secondary={running ? "Keep watching; the brief opens when the gate accepts it." : view.error ? <span className="text-oracle">{view.error}</span> : null}>
-            <div className="grid h-full min-h-[560px] grid-cols-1 gap-4 xl:grid-cols-[1.1fr_1fr] 2xl:grid-cols-[1.25fr_1fr]">
-              <div className="scroll-thin min-h-0 overflow-y-auto pr-1">
-                <RunTimeline view={view} question={view.meta?.question ?? question} patientName={runPatient?.display_name ?? ""} />
-              </div>
-              <div className="min-h-[520px]"><SandboxConsole lines={view.console} live={running} defaultFilter="agents" /></div>
+            <div className="grid h-full min-h-[760px] grid-rows-[minmax(340px,46vh)_minmax(380px,1fr)] gap-4">
+              <Maximizable className="min-h-0">
+                {(c) => <SandboxConsole lines={view.console} live={running} defaultFilter="agents" extra={<MaxButtons c={c} dark />} />}
+              </Maximizable>
+              <AgentTabs view={view} question={view.meta?.question ?? question} patientName={runPatient?.display_name ?? ""} />
             </div>
           </StepPage>
         )}
