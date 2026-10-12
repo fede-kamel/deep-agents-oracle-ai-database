@@ -4,6 +4,7 @@ import {
   Bot, CheckCircle2, ClipboardCheck, Circle, CircleDashed, Database, FileText,
   Brain, Loader2, Search, ShieldAlert, ShieldCheck, Sparkles, UserRound,
 } from "lucide-react";
+import Markdown from "react-markdown";
 import type { Lane, RunView, ToolCall } from "../api";
 import { LANES } from "./lanes";
 
@@ -18,7 +19,7 @@ function parseArgs(args: string): Record<string, unknown> {
 
 function hitIds(result?: string): string[] {
   if (!result) return [];
-  return [...new Set([...result.matchAll(/Doc ID: ([A-Z][A-Z0-9-]+)/g)].map((m) => m[1]))].slice(0, 6);
+  return [...new Set([...result.matchAll(/Doc ID: ([A-Z][A-Z0-9-]+)/g)].map((m) => m[1]))];
 }
 
 function Call({ call }: { call: ToolCall }) {
@@ -41,10 +42,10 @@ function Call({ call }: { call: ToolCall }) {
     const ids = hitIds(call.result);
     return (
       <div className="rounded-lg border border-line bg-panel px-2.5 py-2">
-        <div className="flex items-center gap-1.5 text-[12px] text-ink-2">
-          <Search className="size-3.5 text-ink-3" />
+        <div className="flex items-start gap-1.5 text-[12px] text-ink-2">
+          <Search className="mt-0.5 size-3.5 shrink-0 text-ink-3" />
           <span className="font-mono text-[10.5px] text-ink-3">{call.name}</span>
-          <span className="truncate">“{String(args.query ?? args.document_id ?? "")}”</span>
+          <span className="min-w-0 break-words">“{String(args.query ?? args.document_id ?? "")}”</span>
         </div>
         {ids.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
@@ -100,9 +101,17 @@ export function LaneCard({ lane, thought }: { lane: Lane; thought?: string }) {
           {secs}s
         </div>
       </div>
-      <p className="mt-2 line-clamp-3 text-[12px] leading-snug text-ink-3">{lane.request}</p>
+      <p className="mt-2 whitespace-pre-wrap text-[12px] leading-snug text-ink-3">{lane.request}</p>
       {thought && lane.status === "running" && (
-        <p className="mt-2 line-clamp-4 rounded-lg border-l-2 border-ink-3/30 bg-sand/50 px-2.5 py-1.5 text-[11.5px] italic leading-snug text-ink-2">{thought}</p>
+        <p className="mt-2 whitespace-pre-wrap rounded-lg border-l-2 border-ink-3/30 bg-sand/50 px-2.5 py-1.5 text-[11.5px] italic leading-snug text-ink-2">{thought}</p>
+      )}
+      {lane.report && (
+        <div className="mt-3 rounded-lg border border-moss/25 bg-moss-soft/30 px-3 py-2.5">
+          <div className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-moss">Returned to the lead</div>
+          <div className="prose-report text-[12.5px] leading-relaxed text-ink-2">
+            <Markdown>{lane.report}</Markdown>
+          </div>
+        </div>
       )}
       <div className="mt-2.5 space-y-1.5">
         <AnimatePresence initial={false}>
@@ -113,12 +122,6 @@ export function LaneCard({ lane, thought }: { lane: Lane; thought?: string }) {
           ))}
         </AnimatePresence>
       </div>
-      {lane.report && (
-        <div className="mt-2.5 rounded-lg bg-sand/70 px-2.5 py-2 text-[11.5px] leading-snug text-ink-2">
-          <span className="font-semibold text-ink">Returned · </span>
-          {lane.report.replace(/[*#]/g, "").slice(0, 260)}…
-        </div>
-      )}
     </motion.div>
   );
 }
@@ -165,7 +168,7 @@ export function RunTimeline({ view, question, patientName, showLanes = true }: {
           {view.thoughts.lead && (
             <div className="rounded-xl border-l-[3px] border-navy/40 bg-panel px-4 py-3 text-[12.5px] italic leading-relaxed text-ink-2" style={{ borderColor: "#161F3466" }}>
               <span className="mr-1.5 not-italic text-[10.5px] font-semibold uppercase tracking-wide text-ink-3">lead is thinking</span>
-              {view.thoughts.lead.slice(0, 600)}
+              {view.thoughts.lead}
             </div>
           )}
           <div className="rounded-xl border border-line bg-panel p-4">

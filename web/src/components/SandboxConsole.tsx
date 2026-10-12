@@ -66,9 +66,28 @@ function AgentLine({ line }: { line: string }) {
   );
 }
 
+// Gateway lines arrive as `[1791833071.222] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED …`.
+// Keep what a reader needs: the time of day, the decision, the process and
+// the destination; drop the bookkeeping (mapping ids, engine tags, log level).
+const GATEWAY = /^\[(\d{10})(?:\.\d+)?\] \[sandbox\] \[[A-Z ]+\] (?:\[ocsf\] )?/;
+function tidy(line: string): string {
+  const m = line.match(GATEWAY);
+  if (!m) return line;
+  const clock = new Date(Number(m[1]) * 1000).toLocaleTimeString([], { hour12: false });
+  const rest = line
+    .slice(m[0].length)
+    .replace(/^\[openshell_[a-z_:]+\] /, "")
+    .replace(/ \[(INFO|MED|LOW|HIGH|WARN)\]/, "")
+    .replace(/ mapping_id=[0-9a-f-]+/, "")
+    .replace(/ engine:[a-z0-9]+\]/, "]")
+    .replace(/http:\/\/([^/\s]+):443\//, "https://$1/")
+    .replace(/\/usr\/local\/bin\/(python[0-9.]+)\(\d+\)/, "$1");
+  return `${clock}  ${rest}`;
+}
+
 function classify(line: string): Filter | "noise" {
   if (line.startsWith("[agent:")) return "agents";
-  if (/GetSandbox|Settings poll|relay (stream|opened|closed)|supervisor session|ssh relay|metadata\.id index|error-help\/db\/ora-41900/.test(line)) return "noise";
+  if (/GetSandbox|Settings poll|relay (stream|opened|closed)|supervisor session|ssh relay|metadata\.id index|error-help\/db\/ora-41900|Flushed activity summary/.test(line)) return "noise";
   if (/NET:|HTTP:|Policy DNS|DENIED|ALLOWED/.test(line)) return "network";
   return "lifecycle";
 }
@@ -150,7 +169,7 @@ export const SandboxConsole = memo(function SandboxConsole({ lines, live, extra,
         )}
         {shown.map((l, i) => (
           <div key={i} className={clsx("whitespace-pre-wrap break-all", l.startsWith("[agent:") && "border-l-2 border-[#3b4252] pl-2")}>
-            {l.startsWith("[agent:") ? <AgentLine line={l} /> : renderLine(l.replace(/^\[openshell\] /, ""))}
+            {l.startsWith("[agent:") ? <AgentLine line={l} /> : renderLine(tidy(l.replace(/^\[openshell\] /, "")))}
           </div>
         ))}
       </div>
