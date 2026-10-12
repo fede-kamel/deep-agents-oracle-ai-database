@@ -1,18 +1,12 @@
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BookOpenText, Bot, CheckCircle2, ClipboardCheck, Circle, CircleDashed, Database, FileText, FlaskConical,
-  Brain, Loader2, Search, ShieldAlert, ShieldCheck, Sparkles, TableProperties, UserRound,
+  Bot, CheckCircle2, ClipboardCheck, Circle, CircleDashed, Database, FileText,
+  Brain, Loader2, Search, ShieldAlert, ShieldCheck, Sparkles, UserRound,
 } from "lucide-react";
 import type { Lane, RunView, ToolCall } from "../api";
+import { LANES } from "./lanes";
 
-const LANES: Record<string, { label: string; store: string; icon: typeof Database; tone: string; ring: string }> = {
-  "chart-analyst": { label: "Chart analyst", store: "SQL + patient notes", icon: TableProperties, tone: "text-teal bg-teal-soft", ring: "border-teal/40" },
-  "guideline-researcher": { label: "Guideline researcher", store: "MedQuAD reference", icon: BookOpenText, tone: "text-moss bg-moss-soft", ring: "border-moss/40" },
-  "evidence-researcher": { label: "Evidence researcher", store: "PubMed abstracts", icon: FlaskConical, tone: "text-violet bg-violet-soft", ring: "border-violet/40" },
-  "care-coordinator": { label: "Care coordinator", store: "proposes actions, escalates", icon: ClipboardCheck, tone: "text-ochre bg-ochre-soft", ring: "border-ochre/40" },
-  "medication-safety": { label: "Medication safety", store: "only agent allowed med changes", icon: ShieldAlert, tone: "text-oracle bg-oracle-soft", ring: "border-oracle/40" },
-};
 
 function parseArgs(args: string): Record<string, unknown> {
   try {
@@ -82,7 +76,7 @@ function Call({ call }: { call: ToolCall }) {
   );
 }
 
-function LaneCard({ lane, thought }: { lane: Lane; thought?: string }) {
+export function LaneCard({ lane, thought }: { lane: Lane; thought?: string }) {
   const meta = LANES[lane.name] ?? { label: lane.name, store: "", icon: Bot, tone: "text-ink-2 bg-sand", ring: "border-line" };
   const Icon = meta.icon;
   const secs = ((lane.finished ?? Date.now() / 1000) - lane.started).toFixed(0);
@@ -129,7 +123,9 @@ function LaneCard({ lane, thought }: { lane: Lane; thought?: string }) {
   );
 }
 
-export function RunTimeline({ view, question, patientName }: { view: RunView; question: string; patientName: string }) {
+/** The lead's side of a run. With showLanes={false} the specialists are left
+ * out, for layouts that give each one its own tab (AgentTabs). */
+export function RunTimeline({ view, question, patientName, showLanes = true }: { view: RunView; question: string; patientName: string; showLanes?: boolean }) {
   if (view.status === "idle") return null;
   const writing = view.leadCalls.some((c) => c.name === "write_file");
   return (
@@ -198,7 +194,7 @@ export function RunTimeline({ view, question, patientName }: { view: RunView; qu
             )}
           </div>
 
-          {view.lanes.length > 0 && (
+          {showLanes && view.lanes.length > 0 && (
             <div>
               <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">
                 Delegated to specialists <span className="font-mono normal-case tracking-normal">task</span>

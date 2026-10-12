@@ -22,13 +22,14 @@ def is_transient(exc: Exception) -> bool:
     return any(marker in text for marker in TRANSIENT)
 
 
-def connect(**kwargs):
-    """oracledb.connect with retries on transient sandbox network refusals."""
+def retry(fn, *args, **kwargs):
+    """Call fn, retrying on transient sandbox network refusals. Also covers
+    libraries that open their own connections (langchain-oci's ADB store)."""
     import oracledb
 
     for attempt in range(RETRIES):
         try:
-            return oracledb.connect(**kwargs)
+            return fn(*args, **kwargs)
         except oracledb.Error as exc:
             if attempt == RETRIES - 1 or not is_transient(exc):
                 raise
@@ -36,3 +37,10 @@ def connect(**kwargs):
                   file=sys.stderr, flush=True)
             time.sleep(1.0 + attempt)
     raise RuntimeError("unreachable")
+
+
+def connect(**kwargs):
+    """oracledb.connect with retries on transient sandbox network refusals."""
+    import oracledb
+
+    return retry(oracledb.connect, **kwargs)

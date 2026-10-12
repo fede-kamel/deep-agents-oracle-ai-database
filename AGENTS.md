@@ -16,8 +16,9 @@ running anything.
 - Synthetic data only. Never add, import, or paste real patient data. The
   schema rejects patient ids without the `SYN-` prefix; do not work around it.
 - Scope. Touch only what the demo created: the `DA_*` users and their objects,
-  the `deepagents-genai` provider, `brief-*` and `probe-*` sandboxes, and the
-  `deepagents-oracle-health` image. Never run `db/setup_admin.py` (ADMIN).
+  the `deepagents-genai` provider, `brief-*` and `probe-*` sandboxes, the
+  `deepagents-oracle-health` image, and the `deepagents-*` OCI resources that
+  `deploy/terraform` manages. Never run `db/setup_admin.py` (ADMIN).
 - Care actions. Never approve or reject a care action yourself; that is the
   clinician's or the doctor's decision in the web application (only
   `scripts/demo_e2e.py` and `web/scripts/ui-e2e.mjs` decide, and only when the
@@ -41,6 +42,7 @@ running anything.
 | `ui/`, `web/` | the web application: FastAPI backend, React front end; `web/scripts/ui-e2e.mjs` clicks through it in a browser |
 | `evidence/` | transcripts behind every claim, identifiers redacted |
 | `codex/` | the specification and the prompt |
+| `deploy/` | the demo in OCI: `terraform/`, `server/` provisioning (`provision.sh`, `connect.sh`), `install.sh`, `server/operator/vault-put.sh` |
 
 ## Verifying
 

@@ -341,7 +341,8 @@ def build_agent(settings: Settings, *, display_name: str | None = None, first_na
         own = _store(settings, datastores[alias].table_name, datastores[alias].datastore_description)
         stores_to_close.append(own)
         tools = []
-        for t in create_datastore_tools({alias: own}, embedding_model=embeddings, top_k=6):
+        # The store opens its own connection; retry it like agent_db.connect.
+        for t in agent_db.retry(create_datastore_tools, {alias: own}, embedding_model=embeddings, top_k=6):
             if t.name in ("search", "get_document"):
                 t.name = f"{t.name}_{alias}"
                 t.description = f"Scoped to the {alias} store. " + t.description

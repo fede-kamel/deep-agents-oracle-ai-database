@@ -162,7 +162,10 @@ SQL, searches and proposals, the reasoning the models share, and the full
 gate's verdicts). The **sandbox console** interleaves each agent's steps,
 written from inside the sandbox, with the gateway's own network decisions, so
 a SQL query sits next to the `NET:OPEN … :1521` it caused and a model call next
-to its `HTTP:POST … /openai/v1/chat/completions`. Every panel goes full screen.
+to its `HTTP:POST … /openai/v1/chat/completions`. The console runs full width
+and goes full screen; below it, one tab per specialist opens the moment the
+lead delegates, with its SQL, searches, proposals and report. Every panel goes
+full screen.
 
 ## Check every claim yourself
 
@@ -303,6 +306,23 @@ The web app:
 uv run uvicorn ui.server:app --host 127.0.0.1 --port 8765   # open http://127.0.0.1:8765
 ```
 
+## Run it in OCI
+
+The same demo, entirely in your tenancy: one Ampere VM in a private subnet
+runs the web app, the OpenShell gateway, the sandboxes and the agents. The
+database is reached through a service gateway, on OCI's network, so its access
+list can name the VCN alone; browsers come in through a Network Load Balancer
+to HTTPS with a login; SSH goes through OCI Bastion from any network; the
+secrets live in OCI Vault and the VM reads them itself.
+
+```shell
+cp deploy/terraform/terraform.tfvars.example deploy/terraform/terraform.tfvars   # fill in
+deploy/install.sh        # Terraform, the Vault, the VM; ends with the URL
+```
+
+See [`deploy/README.md`](deploy/README.md). The same brief that took 554 s on a
+laptop took 295 s on the VM, with no sandbox network refusals.
+
 ## Field notes
 
 | Where | What we found |
@@ -313,6 +333,9 @@ uv run uvicorn ui.server:app --host 127.0.0.1 --port 8765   # open http://127.0.
 | deepagents 0.7 | the base stack has no to-do list; add `TodoListMiddleware` for a visible plan. |
 | Middleware and recursion | each middleware adds graph nodes; eleven PII guards left six model turns under the recursion limit. Merge them. |
 | OpenShell 0.1.2 | the first settings poll, about 10 s after start, closes open connections ([NVIDIA/OpenShell#3994](https://github.com/NVIDIA/OpenShell/issues/3994)); the run script waits for it. The Autonomous Database TLS listener needs `protocol: tcp` with `tls: skip`. |
+| OpenShell 0.1.2 on Linux | Oracle Linux's kernel builds Landlock but leaves it out of the active security modules, and sandboxes refuse to start; add `lsm=landlock,…` to the kernel command line. Supervisors run on the host network, where `host.docker.internal` does not resolve: point the Docker driver at `https://127.0.0.1:17670`. |
+| OpenShell DNS mappings | the proxy maps the database host to a synthetic address for the DNS answer's remaining TTL, at most 30 s; a resolver that answers with seconds left makes reconnects hit `transparent TCP mapping is expired`. A local cache with a 5-minute floor (Unbound) removed them; `agent/db.py` retries any left. |
+| OCI routing | one route table cannot send traffic to both an internet gateway and an "all services" service gateway, so the VM sits in a private subnet (service gateway plus NAT) behind a Network Load Balancer. |
 | GPT-6 with an API key | Chat Completions refuses tools while reasoning is on, and `/openai/v1/responses` returned 404 for our key, so GPT-5.5 leads. |
 | Ids from memory | a lead model will cite plausible ids it never retrieved, and an analyst reading notes over SQL numbered them itself. Give every row the id its vector carries (Alembic 0005, `note_ref`) and check every id against the database before accepting. |
 | Gemini and `Literal[...]` | a one-value `Literal` becomes JSON-schema `const`, which Gemini rejects; the adapter maps it to a one-value `enum`. |
@@ -335,6 +358,7 @@ uv run uvicorn ui.server:app --host 127.0.0.1 --port 8765   # open http://127.0.
 | `docs/screenshots/` | the web application, captured from real runs |
 | `evidence/` | the end-to-end flow, event logs, consoles, briefs, verify and probe transcripts, Codex runs |
 | `codex/` | the specification and the prompt |
+| `deploy/` | the demo in OCI: Terraform (private subnet, VM, Bastion, load balancer, Vault) and the VM provisioning scripts |
 
 ---
 

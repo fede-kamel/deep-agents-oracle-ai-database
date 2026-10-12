@@ -16,3 +16,9 @@ deck/*.pptx
 deck/*.pdf
 .cache/
 .tmp/
+
+# terraform: real identifiers and state stay local
+deploy/terraform/terraform.tfvars
+deploy/terraform/.terraform/
+deploy/terraform/.terraform.lock.hcl
+deploy/terraform/*.tfstate*

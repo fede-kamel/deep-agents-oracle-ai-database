@@ -30,7 +30,7 @@ check "gateway connected"        sh -c 'openshell status </dev/null | grep -q "S
 check "sandbox image present"    sh -c "$(declare -f docker_cli); docker_cli image inspect '$IMAGE' --format '{{.Id}}' | cut -c1-19"
 check "provider on gateway"      sh -c "openshell provider get '$PROVIDER' </dev/null >/dev/null && echo '$PROVIDER (key held by the gateway)'"
 check "config file"              sh -c "test -f '$CONFIG' && echo '$CONFIG'"
-check "secrets directory 0700"   sh -c "test \"\$(stat -f %Lp '$SECRETS' 2>/dev/null || stat -c %a '$SECRETS')\" = 700 && echo 'owner-only'"
+check "secrets directory 0700"   sh -c "test \"\$(stat -c %a '$SECRETS' 2>/dev/null || stat -f %Lp '$SECRETS')\" = 700 && echo 'owner-only'"
 for u in DA_OWNER DA_AGENT_X DA_AGENT_Y DA_AGENT_Z; do
   check "secret $u present"      sh -c "test -s '$SECRETS/$u' && echo 'present (not read)'"
 done
