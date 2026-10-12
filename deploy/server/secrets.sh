@@ -28,13 +28,14 @@ for n in $names; do
 done
 
 log "GenAI key -> gateway"
-get deepagents-genai-key | (cd "$HOME/deepagents" && scripts/operator/genai-provider.sh) >/dev/null
+# read in genai-provider.sh fails at end of input without a newline.
+{ get deepagents-genai-key; echo; } | (cd "$HOME/deepagents" && scripts/operator/genai-provider.sh) >/dev/null
 openshell provider get deepagents-genai </dev/null >/dev/null && echo "provider deepagents-genai ready"
 
 log "web login -> Caddy"
 login=$(get deepagents-login)
 user=$(printf '%s' "$login" | head -n1)
-hash=$(printf '%s' "$login" | tail -n +2 | caddy hash-password)
+hash=$({ printf '%s' "$login" | tail -n +2; echo; } | caddy hash-password)
 unset login
 printf 'DEMO_USER=%s\nDEMO_HASH=%s\n' "$user" "$hash" | sudo tee /etc/caddy/demo-auth.env >/dev/null
 sudo chmod 600 /etc/caddy/demo-auth.env
