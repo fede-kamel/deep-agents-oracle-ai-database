@@ -188,8 +188,8 @@ export default function App() {
   const steps: StepInfo[] = useMemo(() => [
     { key: "patient", title: "Patient", hint: selected ? selected.situation : "pick a patient", state: view.status === "idle" ? "ready" : "done" },
     { key: "work", title: "Agents at work",
-      hint: running ? `${view.todos.filter((t) => t.status === "completed").length}/${view.todos.length || "…"} planned · ${view.lanes.length} specialists`
-        : view.done ? `${view.done.tool_calls} tool calls in ${Math.round(view.done.seconds)} s` : "in the OpenShell sandbox",
+      hint: running ? `step ${Math.min(view.todos.filter((t) => t.status === "completed").length + 1, view.todos.length || 1)} of ${view.todos.length || "…"} · ${new Set(view.lanes.map((l) => l.name)).size} agents`
+        : view.done ? `${view.done.tool_calls} calls · ${Math.round(view.done.seconds)} s` : "in the OpenShell sandbox",
       state: running ? "active" : view.status === "idle" ? "waiting" : "done" },
     { key: "brief", title: "Brief", hint: view.verified?.passed ? `verified · ${view.verified.citations} citations` : running ? "being written…" : "the cited document",
       state: view.brief ? "done" : "waiting" },
@@ -228,10 +228,10 @@ export default function App() {
         {step === "work" && (
           <StepPage eyebrow="Step 2 · agents at work, inside the sandbox"
             title={running ? "The agents are researching" : view.done ? "The agents have finished" : "No run yet"}
-            lead={<>The lead plans, then hands the work to specialists: one reads the chart with SQL, two search the reference and PubMed stores, one proposes actions. Above, the sandbox console: each agent's step, written from inside the sandbox, next to the network decision it caused. Below, one tab per specialist, opened as the lead delegates.</>}
+            lead={<>Every agent step and the network decision it caused, live from the sandbox. Each specialist gets a tab when the lead hands it work.</>}
             primary={view.brief ? { label: "Read the brief", onClick: () => setStep("brief") } : undefined}
             secondary={running ? "Keep watching; the brief opens when the gate accepts it." : view.error ? <span className="text-oracle">{view.error}</span> : null}>
-            <div className="grid h-full min-h-[760px] grid-rows-[minmax(340px,46vh)_minmax(380px,1fr)] gap-4">
+            <div className="grid h-full min-h-[620px] grid-rows-[minmax(260px,45%)_minmax(320px,1fr)] gap-3">
               <Maximizable className="min-h-0">
                 {(c) => <SandboxConsole lines={view.console} live={running} defaultFilter="agents" extra={<MaxButtons c={c} dark />} />}
               </Maximizable>

@@ -17,7 +17,7 @@ export function FlowStepper({ steps, current, onGo }: { steps: StepInfo[]; curre
         const clickable = s.state !== "waiting";
         return (
           <div key={s.key} className="flex min-w-0 flex-1 items-center gap-1">
-            <button disabled={!clickable} onClick={() => onGo(s.key)}
+            <button disabled={!clickable} onClick={() => onGo(s.key)} title={`${s.title} · ${s.hint}`}
               className={clsx("flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left transition",
                 on ? "bg-oracle-soft ring-1 ring-oracle/30" : clickable ? "hover:bg-sand" : "opacity-45")}>
               <span className={clsx("grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold",

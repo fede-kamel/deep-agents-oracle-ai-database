@@ -55,3 +55,13 @@ body { @apply bg-paper text-ink font-sans antialiased; font-feature-settings: "c
 .brief tbody td { @apply border-b border-line/70 px-2.5 py-2 align-top leading-snug text-ink-2; }
 .brief tbody tr:last-child td { @apply border-b-0; }
 .brief h3 { @apply text-[13px] font-semibold text-ink mt-4 mb-1.5; }
+
+/* A specialist's report, rendered from its Markdown in full. */
+.prose-report p { margin: 0.35rem 0; }
+.prose-report strong { color: var(--color-ink); font-weight: 600; }
+.prose-report ul, .prose-report ol { margin: 0.35rem 0; padding-left: 1.2rem; }
+.prose-report ul { list-style: disc; }
+.prose-report ol { list-style: decimal; }
+.prose-report li { margin: 0.15rem 0; }
+.prose-report h1, .prose-report h2, .prose-report h3, .prose-report h4 { margin: 0.6rem 0 0.25rem; font-size: 12.5px; font-weight: 600; color: var(--color-ink); }
+.prose-report code { font-family: ui-monospace, monospace; font-size: 11px; background: var(--color-sand); padding: 0 0.25rem; border-radius: 0.25rem; }

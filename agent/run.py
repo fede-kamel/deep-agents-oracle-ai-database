@@ -164,6 +164,11 @@ def emit(kind: str, **payload) -> None:
         print(line, file=sys.stderr, flush=True)
 
 
+# Events carry the whole text: the web app shows every request, call, result
+# and report in full. The cap only guards against a runaway tool result.
+FULL = 200_000
+
+
 def short(value, limit: int = 600) -> str:
     text = value if isinstance(value, str) else json.dumps(value, default=str)
     return text if len(text) <= limit else text[:limit] + " ..."
@@ -207,7 +212,7 @@ def consume(agent, content: str, config: dict, state: dict) -> None:
                 if getattr(msg, "type", "") == "ai":
                     said = message_text(msg)
                     if said:
-                        emit("thought", agent=who, text=short(said, 6000))
+                        emit("thought", agent=who, text=short(said, FULL))
                 for call in getattr(msg, "tool_calls", None) or []:
                     counts["tool_calls"] += 1
                     name, call_args = call["name"], call.get("args", {})
@@ -217,7 +222,7 @@ def consume(agent, content: str, config: dict, state: dict) -> None:
                         counts["delegations"] += 1
                         sub = call_args.get("subagent_type", "specialist")
                         pending.append((call["id"], sub))
-                        emit("delegate", agent=who, subagent=sub, request=short(call_args.get("description", ""), 1200))
+                        emit("delegate", agent=who, subagent=sub, request=short(call_args.get("description", ""), FULL))
                     else:
                         if name == "query_chart":
                             counts["sql"] += 1
@@ -225,10 +230,10 @@ def consume(agent, content: str, config: dict, state: dict) -> None:
                             counts["searches"] += 1
                         if name.startswith(("propose_", "draft_")):
                             counts["actions"] = counts.get("actions", 0) + 1
-                        emit("tool", agent=who, name=name, args=short(call_args, 4000))
+                        emit("tool", agent=who, name=name, args=short(call_args, FULL))
                 if getattr(msg, "type", "") == "tool":
                     name, text = getattr(msg, "name", ""), str(msg.content)
-                    emit("tool_result", agent=who, name=name, preview=short(text, 8000 if name == "task" else 3000))
+                    emit("tool_result", agent=who, name=name, preview=short(text, FULL))
                     policy_events(who, name, text)
         # Subgraph namespaces carry the task node's id; map them in order.
         for part in namespace:
@@ -266,7 +271,7 @@ def main() -> int:
                                               first_name=profile["alias"].split()[0])
     run_id = os.environ.get("DA_RUN_ID", "cli")
     prior = agent_memory.read_history(agent_state["store"], cfg.patient_id)
-    emit("memory", agent="runner", entries=prior.count("\n## "), text=short(prior, 4000),
+    emit("memory", agent="runner", entries=prior.count("\n## "), text=short(prior, FULL),
          store="OracleStore (langgraph-oracledb)", checkpointer="OracleSaver (langgraph-oracledb)")
     started = time.time()
     state = {"task_names": {}, "pending": [], "files": {}, "structured": None,
