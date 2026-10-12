@@ -134,11 +134,15 @@ def card(slide, x, y, w, h, title, body, accent=RED, fill=SAND, title_size=15, b
          [[(title, {"bold": True, "color": INK, "size": title_size})], [(body, {"color": BODY, "size": body_size})]], line=1.15)
 
 
-def figure(slide, name, x, y, w, caption=None, frame=True):
+def figure(slide, name, x, y, w, caption=None, frame=True, max_h=None):
     path = FIG / name
     if frame:
         rect(slide, x - 0.08, y - 0.08, w + 0.16, 0.1, WHITE)  # placeholder, resized below
     pic = slide.shapes.add_picture(str(path), Inches(x), Inches(y), width=Inches(w))
+    if max_h and pic.height > Inches(max_h):  # keep the height; narrow and centre the picture
+        pic.width = int(pic.width * Inches(max_h) / pic.height)
+        pic.height = Inches(max_h)
+        pic.left = Inches(x) + (Inches(w) - pic.width) // 2
     if frame:
         border = slide.shapes[-2]
         border.top, border.left = pic.top - Inches(0.08), pic.left - Inches(0.08)
@@ -599,13 +603,15 @@ agent = create_deepagents_agent(
     # 7b3 · the escalation, as it ran
     s = prs.slides.add_slide(blank)
     header(s, "Patient Y, recorded on a real run in the sandbox", "The escalation, live")
-    figure(s, "../screenshots/09-policy-chain.png", 0.72, 1.75, 11.9)
-    text(s, 0.72, 3.47, 11.9, 0.3, "In the web app: refused by CP-03 → escalation #7 → medication-safety proposes action #89 → the doctor approves; the database executes it.", size=10.5, color=BODY)
-    figure(s, "../screenshots/10-console-policy.png", 0.72, 3.9, 11.9)
-    text(s, 0.72, 5.03, 11.9, 0.3, "In the sandbox console, the same moment: the database's refusal, the escalation, and the network decision behind each step.", size=10.5, color=BODY)
-    text(s, 0.72, 5.5, 11.9, 1.0, [[("Nobody scripted this. ", {"bold": True, "color": INK, "size": 13}),
-        ("The coordinator chose the concern (spironolactone with a falling eGFR), the database refused it, and the medication-safety agent re-read the chart and the reference "
-         "before proposing a hold. The clinician's approval was refused (ORA-20012); the doctor's approval executed it as a physician order.", {"color": BODY, "size": 12.5})]], line=1.15)
+    pic = figure(s, "../screenshots/09-policy-chain.png", 0.72, 1.75, 11.9, max_h=1.55)
+    y = Emu(pic.top + pic.height).inches + 0.14
+    text(s, 0.72, y, 11.9, 0.3, "Above the action cards: CP-03 refuses the coordinator → escalate_to_agent → medication-safety reviews the chart and proposes the change → only the doctor may approve (CP-02).", size=10.5, color=BODY)
+    pic = figure(s, "../screenshots/10-console-policy.png", 0.72, y + 0.5, 11.9, max_h=1.1)
+    y = Emu(pic.top + pic.height).inches + 0.14
+    text(s, 0.72, y, 11.9, 0.3, "In the sandbox console, the same moment: the database's refusal (✕ POLICY CP-03), the escalation, and the network decision behind each step.", size=10.5, color=BODY)
+    text(s, 0.72, y + 0.45, 11.9, 1.0, [[("Nobody scripted this. ", {"bold": True, "color": INK, "size": 13}),
+        ("The coordinator chose the concern, the database refused it, and the medication-safety agent re-read the chart and the reference before proposing "
+         "the change. On the recorded run the clinician's approval was refused (ORA-20012); the doctor's approval executed it as a physician order.", {"color": BODY, "size": 12.5})]], line=1.15)
     repo(s, "evidence/runs/console-Y-first.log · docs/screenshots/04-actions.png · scripts/demo_e2e.py")
     notes(s, "This is the fallback if the live demo misbehaves: the same chain, captured from a real run. Every line in the console is from inside the sandbox.")
 
@@ -654,8 +660,8 @@ agent = create_deepagents_agent(
              "Memory, then Reset demo: back to a clean slate in seconds"]
     text(s, 0.72, 3.85, 11.9, 3.0, [[(f"{i + 1}   ", {"bold": True, "color": YELLOW, "size": 15}), (b, {"color": WHITE, "size": 15})] for i, b in enumerate(beats)], line=1.5)
     text(s, 0.72, 7.08, 11.9, 0.3, FOOTER, size=8, color=RGBColor(0xC8, 0xD6, 0xDB))
-    notes(s, "Before the talk: web app on http://127.0.0.1:8765, Reset demo pressed, OpenShell gateway up, scripts/preflight.sh green. "
-             "A Y brief takes four to six minutes; while it runs, talk through the console and the trace. "
+    notes(s, "Before the talk: open the web app (the OCI host from deploy/, or http://127.0.0.1:8765 locally), press Reset demo, check that Safety opens and "
+             "Agents shows no run. A Y brief takes four to six minutes; while it runs, talk through the console and the timeline. "
              "Fallback if the network fails: open evidence/runs/ and the screenshots on the next slides.")
 
     # 8d · welcome back
@@ -692,11 +698,12 @@ agent = create_deepagents_agent(
     shots = ROOT / "docs" / "screenshots"
     if (shots / "02-agents-at-work.png").exists():
         figure(s, "../screenshots/02-agents-at-work.png", 0.72, 1.85, 5.8)
-        figure(s, "../screenshots/06-inspect-trace.png", 6.82, 1.85, 5.8)
-        text(s, 0.72, 5.7, 11.9, 0.9, [[("Overview: ", {"bold": True, "color": INK, "size": 12.5}),
-            ("a guided flow (patient, agents at work, brief, actions, memory); the live plan beside the sandbox console, where each agent's step sits next to the network decision it caused.  ", {"size": 12.5}),
-            ("Agent trace: ", {"bold": True, "color": INK, "size": 12.5}),
-            ("every reasoning step, delegation, tool call with full arguments and result, the gate's verdicts, filterable by agent; any panel goes full screen.", {"size": 12.5})]])
+        figure(s, "../screenshots/06-timeline.png", 6.82, 1.85, 5.8)
+        text(s, 0.72, 5.7, 11.9, 0.9, [[("Agents: ", {"bold": True, "color": INK, "size": 12.5}),
+            ("five tabs (patient, agents, brief, actions, memory); the sandbox console above, where each agent's step sits next to the network decision it caused, "
+             "and below it the lead's plan with one tab per specialist as the lead delegates.  ", {"size": 12.5}),
+            ("Timeline: ", {"bold": True, "color": INK, "size": 12.5}),
+            ("every reasoning step, delegation, tool call with full arguments and result, the gate's verdicts, by agent; every area goes full screen.", {"size": 12.5})]])
     notes(s, "The UI is a thin client: FastAPI runs scripts/sandbox.sh and streams the agent channel and the console channel over SSE.")
 
     # 10b · actions
