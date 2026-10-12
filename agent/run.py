@@ -88,16 +88,20 @@ def narrate(kind: str, payload: dict) -> str | None:
     which OpenShell relays as the sandbox's console output, so the console
     shows what each agent does next to the network decision it causes."""
     who = payload.get("agent") or "runner"
-    one = lambda v, n=160: " ".join(str(v).split())[:n]
+    def one(v, n: int | None = None) -> str:
+        """One line, whole: the console keeps every word; the web app folds long ones."""
+        text = " ".join(str(v).split())
+        return text if n is None or len(text) <= n else text[: n - 1] + "…"
+
     if kind == "start":
         return f"[agent:lead] run started as {payload.get('db_user')} · {payload.get('model')} lead, {payload.get('worker_model')} specialists"
     if kind == "plan":
         todos = payload.get("todos") or []
         done = sum(1 for t in todos if t.get("status") == "completed")
         now = next((t.get("content", "") for t in todos if t.get("status") == "in_progress"), "")
-        return f"[agent:{who}] plan · {done}/{len(todos)} done" + (f" · ▸ {one(now, 110)}" if now else "")
+        return f"[agent:{who}] plan · {done}/{len(todos)} done" + (f" · ▸ {one(now)}" if now else "")
     if kind == "delegate":
-        return f"[agent:{who}] task → {payload.get('subagent')}: {one(payload.get('request', ''), 140)}"
+        return f"[agent:{who}] task → {payload.get('subagent')}: {one(payload.get('request', ''))}"
     if kind == "tool":
         name, args = payload.get("name", ""), payload.get("args", "")
         try:
@@ -105,29 +109,29 @@ def narrate(kind: str, payload: dict) -> str | None:
         except ValueError:
             parsed = {}
         if name == "query_chart":
-            return f"[agent:{who}] SQL  {one(parsed.get('sql', args), 170)}"
+            return f"[agent:{who}] SQL  {one(parsed.get('sql', args))}"
         if name.startswith("search"):
-            return f"[agent:{who}] {name} \"{one(parsed.get('query', ''), 120)}\""
+            return f"[agent:{who}] {name} \"{one(parsed.get('query', ''))}\""
         if name == "escalate_to_agent":
-            return f"[agent:{who}] escalate_to_agent → {parsed.get('to_agent')} · {one(parsed.get('subject', ''), 120)}"
+            return f"[agent:{who}] escalate_to_agent → {parsed.get('to_agent')} · {one(parsed.get('subject', ''))}"
         if name.startswith(("propose_", "draft_")):
             label = (parsed.get("subject") or ", ".join(parsed.get("tests", []) or []) or parsed.get("visit_type", "")
                      or f"{parsed.get('change', '')} {parsed.get('medication', '')}".strip())
-            return f"[agent:{who}] {name} · {one(label, 120)}"
+            return f"[agent:{who}] {name} · {one(label)}"
         if name in ("write_todos", "PreVisitBrief"):
             return None
         return f"[agent:{who}] {name}"
     if kind == "tool_result":
         name, preview = payload.get("name", ""), str(payload.get("preview", ""))
         if name == "task":
-            return f"[agent:{who}] ← specialist reported back ({len(preview)} chars)"
+            return f"[agent:{who}] ← specialist reported back · {one(preview)}"
         if "policy CP-" in preview and preview.startswith("Refused"):
-            return f"[agent:{who}]   ✕ POLICY {one(preview.split('policy ', 1)[1], 150)}"
+            return f"[agent:{who}]   ✕ POLICY {one(preview.split('policy ', 1)[1])}"
         if name.startswith(("propose_", "draft_", "escalate_", "decline_")):
-            return f"[agent:{who}]   → {one(preview.split('. ')[0], 130)}"
+            return f"[agent:{who}]   → {one(preview)}"
         if name == "query_chart":
             rows = preview.count("\n") + 1 if preview.startswith("{") else 0
-            return f"[agent:{who}]   → {rows} rows" if rows else f"[agent:{who}]   → {one(preview, 100)}"
+            return f"[agent:{who}]   → {rows} rows" if rows else f"[agent:{who}]   → {one(preview)}"
         if name.startswith("search"):
             return f"[agent:{who}]   → {preview.count('[Doc ID:')} hits"
         return None
@@ -136,11 +140,11 @@ def narrate(kind: str, payload: dict) -> str | None:
     if kind == "escalation":
         return f"[agent:runner] escalation #{payload.get('id')}: {payload.get('agent')} → {payload.get('to')}"
     if kind == "thought":
-        return f"[agent:{who}] thinking: {one(payload.get('text', ''), 150)}"
+        return f"[agent:{who}] thinking: {one(payload.get('text', ''))}"
     if kind == "verify":
         if payload.get("passed"):
             return f"[agent:runner] gate: accepted · {payload.get('citations')} citations, every id found in the database"
-        return f"[agent:runner] gate: sent back · {one('; '.join(payload.get('problems', [])), 150)}"
+        return f"[agent:runner] gate: sent back · {one('; '.join(payload.get('problems', [])))}"
     if kind == "memory":
         return ("[agent:runner] memory: brief recorded in OracleStore" if payload.get("written")
                 else f"[agent:runner] memory: {payload.get('entries', 0)} entries loaded from OracleStore")
@@ -150,7 +154,7 @@ def narrate(kind: str, payload: dict) -> str | None:
         return (f"[agent:runner] done in {payload.get('seconds')} s · {payload.get('tool_calls')} tool calls · "
                 f"{payload.get('sql')} SQL · {payload.get('searches')} searches · {payload.get('actions', 0)} actions proposed")
     if kind in ("error", "blocked"):
-        return f"[agent:runner] {kind}: {one(payload.get('message', ''), 160)}"
+        return f"[agent:runner] {kind}: {one(payload.get('message', ''))}"
     return None
 
 

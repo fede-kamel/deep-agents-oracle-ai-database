@@ -3,8 +3,9 @@
 //   node scripts/ui-e2e.mjs [patient] [outdir]     (web app on 127.0.0.1:8765)
 // Reset demo → pick the patient → Enter → wait for the verified brief → Actions:
 // the policy chain is shown, the clinician's approval of the medication change is
-// refused, the doctor's executes it, the rest are approved → Memory → Inspect
-// panels → Reset demo clears the actions. Ends with "UI E2E OK (n/n)".
+// refused, the doctor's executes it, the rest are approved → Memory → the
+// Safety panel and the run's timeline → Reset demo clears the actions.
+// Ends with "UI E2E OK (n/n)".
 import { mkdirSync } from "node:fs";
 import { chromium } from "playwright-core";
 
@@ -34,8 +35,8 @@ try {
   const own = { X: "Type 2 diabetes mellitus", Y: "Heart failure", Z: "Chronic obstructive" }[patient];
   const other = { X: "Heart failure", Y: "Osteoarthritis", Z: "Osteoarthritis" }[patient];
   check(`chips are Patient ${patient}'s own conditions`, await page.locator(`span:has-text("${own}")`).count() > 0 && await page.locator(`span.rounded-full:has-text("${other}")`).count() === 0);
-  const selectedTab = await page.locator("header button", { hasText: `Patient ${patient}` }).first().getAttribute("class");
-  check(`header highlights Patient ${patient}`, /shadow-sm/.test(selectedTab ?? ""));
+  const pressed = await page.locator("header button", { hasText: `Patient ${patient}` }).first().getAttribute("aria-pressed");
+  check(`header highlights Patient ${patient}`, pressed === "true");
   await shot("01-patient");
 
   await page.locator("textarea").first().focus();
@@ -64,7 +65,7 @@ try {
   check("policy chain shows the CP-03 refusal and the escalation", await visible("Database policy CP-03 refused it", 15000) && await visible("escalation #", 5000));
   await shot("04-actions");
 
-  const med = page.locator("div.rounded-xl", { has: page.locator("button:has-text('Approve as doctor')") }).first();
+  const med = page.locator('[data-card="action"]', { has: page.locator("button:has-text('Approve as doctor')") }).first();
   check("medication change waits for the doctor", await med.count() === 1);
   await med.locator("button:has-text('Approve as clinician')").click();
   check("clinician approval is refused by the database", await visible("Refused by the database", 15000));
@@ -88,13 +89,15 @@ try {
   check("memory records the doctor's and the clinician's decisions", await visible("Doctor approved action", 15000) && await visible("Clinician approved action", 5000));
   await shot("07-memory");
 
-  for (const panel of ["Trace", "Console", "Safety"]) {
-    await page.click(`button:has-text('${panel}')`);
-    await page.waitForTimeout(1200);
-    await shot(`08-${panel.toLowerCase()}`);
-    await page.keyboard.press("Escape");
-  }
-  check("inspect panels open and close", true);
+  await page.click("header button:has-text('Safety')");
+  check("safety panel opens", await visible("Four layers, each measured", 5000));
+  await shot("08-safety");
+  await page.keyboard.press("Escape");
+  await page.getByText("Four layers, each measured").waitFor({ state: "detached", timeout: 5000 });
+  await step("Agents");
+  await page.click("button[role=tab]:has-text('Timeline')");
+  check("timeline lists the run's events", await page.locator("text=/specialist reported back|brief accepted/").count() > 0);
+  await shot("09-timeline");
 
   await page.click("header button:has-text('Reset demo')");
   await page.click("button:has-text('Reset the demo')");
@@ -102,7 +105,7 @@ try {
   check("reset returns to step 1 with memory cleared", await visible("Nothing yet", 15000));
   const left = await (await fetch(`http://127.0.0.1:8765/api/patients/${patient}/actions`)).json();
   check("reset clears the actions", left.length === 0, `${left.length} left`);
-  await shot("09-after-reset");
+  await shot("10-after-reset");
 } catch (err) {
   check("no exception", false, String(err).split("\n")[0]);
   await shot("error").catch(() => {});

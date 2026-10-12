@@ -22,6 +22,7 @@ import io
 import json
 import os
 import re
+import shutil
 import sys
 import time
 import uuid
@@ -291,6 +292,9 @@ async def reset_demo() -> dict:
 
     counts = await asyncio.to_thread(reset, lambda *_: None)
     RUNS.clear()
+    if RUNS_DIR.is_dir():
+        for run_dir in RUNS_DIR.iterdir():
+            shutil.rmtree(run_dir, ignore_errors=True)
     return {"reset": True, "runs stopped": stopped, **counts}
 
 
@@ -327,6 +331,7 @@ class Run:
     proc: asyncio.subprocess.Process | None = None
     done: asyncio.Event = field(default_factory=asyncio.Event)
     changed: asyncio.Condition = field(default_factory=asyncio.Condition)
+    stream: io.TextIOBase | None = None  # out/runs/<id>/stream.jsonl, the replayable record
 
     def summary(self) -> dict:
         return {"id": self.id, "patient": self.patient, "status": self.status,
@@ -336,6 +341,53 @@ class Run:
 RUNS: dict[str, Run] = {}
 
 
+def _load_runs() -> None:
+    """Rebuild the run list from out/runs so a restart (a redeploy, a reboot)
+    does not empty the application. stream.jsonl replays exactly; a run whose
+    stream has no final status was cut off and is recorded as failed. Older
+    directories hold only events.jsonl and console.log."""
+    if not RUNS_DIR.is_dir():
+        return
+    for run_dir in sorted(RUNS_DIR.iterdir()):
+        stream_file, events_file, console_file = (run_dir / n for n in ("stream.jsonl", "events.jsonl", "console.log"))
+        lines: list[dict] = []
+        if stream_file.is_file():
+            lines = [json.loads(l) for l in stream_file.read_text().splitlines() if l.strip()]
+        elif events_file.is_file():
+            for l in events_file.read_text().splitlines():
+                try:
+                    lines.append({"channel": "agent", "event": json.loads(l)})
+                except ValueError:
+                    continue
+            if console_file.is_file():
+                lines.extend({"channel": "console", "line": l} for l in console_file.read_text().splitlines())
+        events = [x["event"] for x in lines if x.get("channel") == "agent"]
+        start = next((e for e in events if e.get("type") == "start"), None)
+        if start is None:
+            continue
+        key = str(start.get("patient", ""))[-1:]
+        if key not in PATIENTS:
+            continue
+        brief = next((e.get("markdown") for e in events if e.get("type") == "brief"), None)
+        status_item = next((x for x in reversed(lines) if x.get("channel") == "status"), None)
+        if status_item is not None:
+            status = str(status_item["status"])
+        elif stream_file.is_file() or not any(e.get("type") == "done" for e in events):
+            status = "failed"
+            lines.append({"channel": "status", "status": status, "exit_code": -1})
+        else:
+            kinds = {e.get("type") for e in events}
+            status = "blocked" if "blocked" in kinds else "rejected" if "rejected" in kinds else "succeeded" if brief else "failed"
+            lines.append({"channel": "status", "status": status, "exit_code": 0 if status == "succeeded" else 1})
+        run = Run(id=run_dir.name, patient=key, question=str(start.get("question", "")),
+                  started=float(start.get("t", run_dir.stat().st_mtime)), status=status, lines=lines, brief=brief)
+        run.done.set()
+        RUNS[run.id] = run
+
+
+_load_runs()
+
+
 class RunRequest(BaseModel):
     patient: str = Field(pattern="^[XYZ]$")
     question: str | None = Field(default=None, max_length=2000)
@@ -343,6 +395,9 @@ class RunRequest(BaseModel):
 
 async def _append(run: Run, item: dict) -> None:
     run.lines.append(item)
+    if run.stream is not None:
+        run.stream.write(json.dumps(item, default=str) + "\n")
+        run.stream.flush()
     async with run.changed:
         run.changed.notify_all()
 
@@ -367,6 +422,7 @@ async def _pump(run: Run, stream: asyncio.StreamReader, channel: str, log) -> No
 async def _execute(run: Run) -> None:
     run_dir = RUNS_DIR / run.id
     run_dir.mkdir(parents=True, exist_ok=True)
+    run.stream = open(run_dir / "stream.jsonl", "w")
     cmd = [str(ROOT / "scripts" / "sandbox.sh"), "run", run.patient]
     if run.question:
         cmd.append(run.question)
@@ -384,6 +440,8 @@ async def _execute(run: Run) -> None:
     if run.brief:
         (run_dir / f"brief-{run.patient}.md").write_text(run.brief)
     await _append(run, {"channel": "status", "status": run.status, "exit_code": code})
+    run.stream.close()
+    run.stream = None
     run.done.set()
 
 

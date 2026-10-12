@@ -32,6 +32,11 @@ EOF
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 systemctl --user daemon-reload
 systemctl --user enable deepagents-web >/dev/null 2>&1
+# A restart kills the run the server is driving. Wait for a run in progress.
+while curl -fsS --max-time 5 http://127.0.0.1:8765/api/runs 2>/dev/null | grep -qE '"status": ?"running"'; do
+  echo "a run is in progress; waiting before restarting the web service ..."
+  sleep 30
+done
 systemctl --user restart deepagents-web
 
 log "caddy for https://$HOST"

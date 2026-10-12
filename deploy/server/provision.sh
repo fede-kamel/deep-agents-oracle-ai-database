@@ -15,7 +15,8 @@ log() { printf '== %s\n' "$*"; }
 deploy/server/connect.sh
 
 log "code"
-{ git ls-files; find deploy/server -type f; } | sort -u \
+# Tracked files that still exist (a deleted file stays listed until committed).
+{ git ls-files; find deploy/server -type f; } | sort -u | while IFS= read -r f; do [ -e "$f" ] && printf '%s\n' "$f"; done \
   | COPYFILE_DISABLE=1 tar -czf - -T - \
   | "${SSH[@]}" opc@127.0.0.1 'mkdir -p deepagents && tar -xzf - -C deepagents 2>/dev/null'
 
