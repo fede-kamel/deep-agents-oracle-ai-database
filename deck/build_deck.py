@@ -295,7 +295,7 @@ def slide_cover(prs, blank):
     s.shapes.add_picture(str(LOGOS / "langchain-white.png"), Inches(2.82), Inches(1.12), height=Inches(0.36))
     rect(s, 4.67, 1.1, 0.02, 0.4, RGBColor(0x8F, 0xA6, 0xAD))
     s.shapes.add_picture(str(LOGOS / "nvidia-white-mono.png"), Inches(4.87), Inches(1.12), height=Inches(0.36))
-    notes(s, "[0:00, 30 s] Fifteen minutes: twelve slides; the live run starts at minute three and is shown at minute nine; everything after the conclusion is appendix. "
+    notes(s, "[0:00, 30 s] Fifteen minutes: thirteen slides; the architecture at minute one, the live run starts at minute three and is shown at minute nine; everything after the conclusion is appendix. "
              "Deep Agents on your own data: a LangChain Deep Agent, built with the open-source langchain-oracle packages, "
              "writes a pre-visit clinical brief from Oracle AI Database 26ai, inside an NVIDIA OpenShell sandbox. "
              "Every patient is synthetic.")
@@ -325,7 +325,7 @@ def slide_what_is_a_deep_agent(prs, blank):
     text(s, 0.98, 5.47, 11.4, 0.8, [[("A proven pattern, now open source. ", {"bold": True, "color": WHITE, "size": 13.5}),
         ("It is the design behind coding agents and deep-research products. LangChain packages it as \u201cthe batteries-included agent harness\u201d for long, "
          "multi-step work; langchain-oracle connects it to Oracle AI Database.", {"color": WHITE, "size": 13})]], line=1.15)
-    notes(s, "[0:30, 1 min] Strategic framing, from LangChain's own positioning: Deep Agents is an agent harness for complex, multi-step, long-running work. "
+    notes(s, "[0:30, 45 s] Strategic framing, from LangChain's own positioning: Deep Agents is an agent harness for complex, multi-step, long-running work. "
              "Their argument is that the model loop is the same as any agent's; the difference is the architecture around it: a plan, specialists, "
              "a place to keep working notes, and a detailed brief for each role. Claude Code, Deep Research and Manus follow this pattern. "
              "Sources: docs.langchain.com/oss/python/deepagents, langchain.com/blog/deep-agents, github.com/langchain-ai/deepagents.")
@@ -391,10 +391,10 @@ def slide_process_table(prs, blank):
     text(s, 0.72, 5.65, 11.9, 0.8, [[("Nothing new was invented for the agents: ", {"bold": True, "color": INK, "size": 13}),
         ("each one does a step a person does today, with that person’s data and that person’s limits. The people who sign today still sign.", {"color": BODY, "size": 13})]], line=1.15)
     repo(s, "agent/brief_agent.py (one prompt per role) · migrations/versions/0006-0008 (the controls)")
-    notes(s, "[1:30, 1.5 min] The method in one breath: observe how the clinic prepares a visit today, split it into roles and steps, map each control "
+    notes(s, "[2:15, 45 s] The method in one breath: observe how the clinic prepares a visit today, split it into roles and steps, map each control "
              "(a source becomes a tool, a rule becomes a database policy, a signature becomes an approval), then prove it on synthetic cases. "
-             "Walk the table top to bottom: this is a real clinic workflow. The point for any enterprise process (claims, procurement, KYC, incident review) "
-             "is the same mapping: roles to agents, sources to tools, rules to database policies, signatures to approvals.")
+             "Run a finger down the table: the five specialists of the architecture slide are these five roles. The point for any enterprise process "
+             "(claims, procurement, KYC, incident review) is the same mapping: roles to agents, sources to tools, rules to database policies, signatures to approvals.")
 
 
 def slide_scenario(prs, blank):
@@ -425,19 +425,20 @@ def slide_scenario(prs, blank):
 
 
 def slide_architecture(prs, blank):
-    """why"""
+    """the whole system in one picture, before the demo starts"""
     s = prs.slides.add_slide(blank)
-    header(s, "Agents on data that matters", "The architecture")
-    bullets(s, 0.72, 1.95, 6.55, 4.8, [
-        ("The data is the hard part.", "Agents earn their keep on a company's own records, and those records are exactly what nobody wants an agent to wander through."),
-        ("Deep Agents do real research.", "They plan, delegate to specialists, query and search, and write a document. That is more reach than a chat window, not less."),
-        ("Safety has to be structural.", "The database decides which rows an agent sees; the sandbox decides which hosts it reaches; the key never enters it."),
-        ("Grounding has to be checked.", "A brief is useful only when every claim points at a row, a note, or a source that exists."),
-    ])
-    figure(s, "figure1-architecture.png", 7.62, 1.92, 4.9,
-           "Figure 1 — The Deep Agent runs inside an OpenShell sandbox; Oracle AI Database holds the chart, the vectors and the model.")
-    notes(s, "Set up the problem: the value of agents is on your own data, and the risk is too. The answer in this talk is "
-             "structural: the database, the sandbox and a grounding gate each refuse on their own.")
+    header(s, "One question in, a cited brief out", "The architecture")
+    figure(s, "figure1-architecture.png", 0.72, 1.85, 7.25, max_h=5.0)
+    bullets(s, 8.3, 1.95, 4.35, 4.9, [
+        ("The clinician asks.", "Picks a patient in the web app and sends one question. Codex runs the same scripts to rebuild and rerun the demo."),
+        ("A Deep Agent, in an OpenShell sandbox.", "Built with langchain-oci: a lead plans and delegates to five specialists; a gate accepts the brief only if every cited id exists."),
+        ("Oracle AI Database holds the data.", "The chart, the vector stores, the embedding model, the agent's memory and checkpoints; row-level security gives each agent one patient."),
+        ("OCI Generative AI runs the models.", "GPT-5.5 leads, Gemini 2.5 Flash runs the specialists. The key is a placeholder the gateway swaps in transit; nothing else is reachable."),
+    ], size=13.5)
+    notes(s, "[1:15, 1 min] The whole system in one picture, left to right: a clinician asks in the web app (Codex can drive the same scripts); "
+             "the Deep Agent runs inside an OpenShell sandbox, one patient per run; it reads Oracle AI Database (the chart, the vectors, the embedding "
+             "model, under row-level security) and calls OCI Generative AI through the gateway, which holds the key. Nothing else is reachable. "
+             "Everything the demo shows from minute three happens inside the green box; the next slide says which person each specialist stands in for.")
 
 
 def slide_deep_agent(prs, blank):
@@ -717,7 +718,7 @@ def slide_appendix_divider(prs, blank):
     text(s, 0.72, 1.8, 11.9, 1.0, "More detail, for the questions", size=40, color=WHITE, bold=True)
     groups = [
         ("The method", "Why Deep Agents fit the enterprise · Reverse-engineer the process · The scenario: three patients"),
-        ("The build", "The architecture · Build the agent in thirty lines · How agents read the database · From brief to action"),
+        ("The build", "Build the agent in thirty lines · How agents read the database · From brief to action"),
         ("The controls", "The escalation, live · Why OpenShell · The grounding gate"),
         ("The run", "What you just saw · One run, beat by beat · The application · Proposed actions · The agent remembers"),
         ("The proof", "Why Codex · Field notes"),
@@ -902,11 +903,13 @@ def slide_conclusion(prs, blank):
     notes(s, "[13:30, 30 s; a minute left for questions] Close on the method: structural safety plus a grounding gate, reproducible from a spec.")
 
 
-# The talk, in order: twelve slides for fifteen minutes.
-CORE = [slide_cover, slide_what_is_a_deep_agent, slide_process_table, slide_demo_start, slide_deep_agent, slide_data_layer,
-        slide_sql_safely, slide_policy_in_action, slide_four_layers, slide_demo_back, slide_results, slide_conclusion]
+# The talk, in order: thirteen slides for fifteen minutes. The concept, the
+# whole system in one picture, the process it copies; then the live run
+# starts and the slides explain what is running until it is shown.
+CORE = [slide_cover, slide_what_is_a_deep_agent, slide_architecture, slide_process_table, slide_demo_start, slide_deep_agent,
+        slide_data_layer, slide_sql_safely, slide_policy_in_action, slide_four_layers, slide_demo_back, slide_results, slide_conclusion]
 # Backup for questions, behind the divider, in the order the divider lists them.
-APPENDIX = [slide_appendix_divider, slide_why_enterprise, slide_reverse_engineer, slide_scenario, slide_architecture, slide_build_code,
+APPENDIX = [slide_appendix_divider, slide_why_enterprise, slide_reverse_engineer, slide_scenario, slide_build_code,
             slide_tools_table, slide_brief_to_action, slide_escalation_live, slide_why_openshell, slide_grounding_gate, slide_what_you_saw,
             slide_one_run, slide_application, slide_actions_screen, slide_memory, slide_codex, slide_field_notes]
 
