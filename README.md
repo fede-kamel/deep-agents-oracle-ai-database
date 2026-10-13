@@ -167,7 +167,10 @@ interleaves each agent's steps, written from inside the sandbox, with the
 gateway's own network decisions, so a SQL query sits next to the
 `NET:OPEN … :1521` it caused and a model call next to its
 `HTTP:POST … /openai/v1/chat/completions`. Every area goes full screen.
-Runs are kept on disk, so a restart of the server changes nothing on screen.
+Runs are kept on disk, so a restart of the server changes nothing on screen;
+a dropped connection resumes where it left off; and after a redeploy an open
+tab reloads itself once instead of failing. The brief downloads as Word or
+Markdown, and each download says what it saved.
 
 ## Check every claim yourself
 

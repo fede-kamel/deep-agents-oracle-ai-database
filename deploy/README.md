@@ -62,3 +62,6 @@ terraform -chdir=deploy/terraform destroy                  # remove it all
   retries the rare refusal left.
 - **Front end.** `npm ci` crashes on the VM, so `provision.sh` builds `web/dist`
   on the laptop and copies it.
+- **No HTTP/3.** The load balancer forwards TCP, so Caddy serves HTTP/1.1 and
+  HTTP/2 only. Advertising HTTP/3 would send browsers to a UDP port nothing
+  answers before they fall back.

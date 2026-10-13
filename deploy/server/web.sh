@@ -40,7 +40,16 @@ done
 systemctl --user restart deepagents-web
 
 log "caddy for https://$HOST"
+# HTTP/1.1 and HTTP/2 only: the load balancer forwards TCP, so HTTP/3 (UDP)
+# can never arrive, and advertising it would make browsers try it first.
+# flush_interval -1 passes the event stream through unbuffered.
 sudo tee /etc/caddy/Caddyfile >/dev/null <<EOF
+{
+	servers {
+		protocols h1 h2
+	}
+}
+
 $HOST {
 	basic_auth {
 		{\$DEMO_USER} {\$DEMO_HASH}
@@ -58,7 +67,8 @@ EOF
 sudo systemctl daemon-reload
 if sudo test -f /etc/caddy/demo-auth.env; then
   sudo systemctl enable caddy >/dev/null 2>&1
-  sudo systemctl restart caddy
+  # A running Caddy takes the new file without dropping connections.
+  if systemctl is-active --quiet caddy; then sudo systemctl reload caddy; else sudo systemctl restart caddy; fi
   echo "https://$HOST"
 else
   echo "login not set: run deploy/server/operator/set-login.sh on the VM, then rerun this script"
