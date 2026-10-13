@@ -13,7 +13,7 @@ await page.waitForSelector("text=Lab trends", { timeout: 30000 });
 await shot("01-patient", 6000);
 await tab("Agents"); await shot("02-agents-at-work", 2500);
 await page.click("[role=tab]:has-text('Timeline')"); await shot("06-timeline", 1200);
-await page.click("button:has-text('All')"); await page.click("section button[title='Full screen']"); await shot("07-console", 1200);
+await page.click("button:has-text('All')"); await page.click("section:has-text('Sandbox console') button[title='Full screen']"); await shot("07-console", 1200);
 await page.evaluate(() => document.exitFullscreen()); await page.waitForTimeout(600); // Esc is the browser's own key; a headless page needs the call
 await tab("Brief"); await shot("03-brief", 2500);
 await tab("Actions"); await shot("04-actions", 2500);

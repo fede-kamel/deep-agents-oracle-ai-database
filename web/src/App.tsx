@@ -188,6 +188,7 @@ export default function App() {
   }, [view.brief, view.id]);
 
   const pick = (p: Patient) => {
+    if (p.key === selected?.key) return; // already on this patient: the run on screen stays
     setSelected(p);
     setQuestion(p.question);
     if (!running) { source.current?.close(); setView(emptyRun()); setTab("patient"); }

@@ -157,10 +157,12 @@ so the next brief knows what was approved, executed, or rejected.
 ## Watch the agents work
 
 The web application has five tabs, one per stage: the patient, the agents,
-the brief, the actions, the memory. **Agents** shows the sandbox console above
-and the run below: the lead's plan, one tab per specialist opened the moment
-the lead delegates to it (its request, what it returned, every SQL query and
-search with its full result), and a **Timeline** of every event. The console
+the brief, the actions, the memory. **Agents** is laid out like an IDE: the
+run on top (the lead's plan, one tab per specialist opened the moment the lead
+delegates to it, with its request, what it returned, every SQL query and
+search with its full result, and a **Timeline** of every event) and the
+sandbox console below as the terminal, sized by dragging the sash between
+them, or collapsed to its title row with a double-click. The console
 interleaves each agent's steps, written from inside the sandbox, with the
 gateway's own network decisions, so a SQL query sits next to the
 `NET:OPEN … :1521` it caused and a model call next to its
