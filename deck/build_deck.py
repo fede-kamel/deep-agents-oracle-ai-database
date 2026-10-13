@@ -8,7 +8,7 @@ copyright footer. Run metrics are read from the event logs, so the numbers on
 the slides are the numbers in the evidence.
 
 The talk is fifteen minutes. CORE lists the twelve slides shown, in order: the
-live run starts at minute three and finishes while the next seven slides explain
+live run starts at minute three and finishes while the next eight slides explain
 the build; the browser comes back at minute nine. APPENDIX lists the backup
 slides, behind a divider and with an "Appendix" kicker. The speaker notes of
 every core slide start with its minute mark.
@@ -295,7 +295,7 @@ def slide_cover(prs, blank):
     s.shapes.add_picture(str(LOGOS / "langchain-white.png"), Inches(2.82), Inches(1.12), height=Inches(0.36))
     rect(s, 4.67, 1.1, 0.02, 0.4, RGBColor(0x8F, 0xA6, 0xAD))
     s.shapes.add_picture(str(LOGOS / "nvidia-white-mono.png"), Inches(4.87), Inches(1.12), height=Inches(0.36))
-    notes(s, "[0:00, 30 s] Fifteen minutes: sixteen slides; the architecture at minute one, the live run starts at minute three, one run beat by beat at minute four, and the browser comes back after minute nine; everything after the conclusion is appendix. "
+    notes(s, "[0:00, 30 s] Fifteen minutes: seventeen slides; the architecture at minute one, the live run starts at minute three, one run beat by beat at minute four, the agent and its code at minute five, and the browser comes back after minute nine; everything after the conclusion is appendix. "
              "Deep Agents on your own data: a LangChain Deep Agent, built with the open-source langchain-oracle packages, "
              "writes a pre-visit clinical brief from Oracle AI Database 26ai, inside an NVIDIA OpenShell sandbox. "
              "Every patient is synthetic.")
@@ -479,42 +479,52 @@ def slide_deep_agent(prs, blank):
         ("Medication safety.", "The only agent allowed to propose a medication change; a doctor approves it."),
         ("Models.", "GPT-5.5 leads; Gemini 2.5 Flash runs the specialists, both on OCI Generative AI."),
     ], size=13.5)
-    notes(s, "[5:00, 1 min] The run is going in the browser; this is what is running inside the sandbox. create_deepagents_agent from langchain-oci composes the LangChain Deep Agents harness with Oracle datastores. "
+    notes(s, "[5:00, 45 s] The run is going in the browser; this is what is running inside the sandbox. create_deepagents_agent from langchain-oci composes the LangChain Deep Agents harness with Oracle datastores. "
              "Specialists each get a single-store tool set so routing is explicit.")
 
 
 def slide_build_code(prs, blank):
-    """code"""
+    """the code: agent/brief_agent.py, trimmed to what matters"""
     s = prs.slides.add_slide(blank)
-    header(s, "Thirty lines of langchain-oracle", "Build the agent")
-    code(s, 0.72, 1.9, 7.4, 4.6, '''
+    header(s, "agent/brief_agent.py, trimmed to the calls that matter", "Build the agent")
+    code(s, 0.72, 1.85, 7.75, 5.05, '''
 from langchain_oci import create_deepagents_agent
 from langchain_oci.datastores import ADB, create_datastore_tools
 from langchain_oracledb.embeddings import OracleEmbeddings
+from langgraph_oracledb.checkpoint.oracle import OracleSaver
+from langgraph_oracledb.store.oracle import OracleStore
 
-# Embeddings run inside Oracle AI Database (ONNX model)
-emb = OracleEmbeddings(conn=conn, params={
-    "provider": "database", "model": "DA_OWNER.MINILM_L12"})
-
-notes = ADB(dsn=dsn, user="DA_AGENT_Y", password=pw,
-            table_name="PATIENT_NOTE_VEC")
+# Embeddings run inside the database; one store per specialist, as the patient's login
+emb = OracleEmbeddings(conn=conn, params={"provider": "database",
+                                          "model": "DA_OWNER.MINILM_L12"})
+notes = ADB(dsn=dsn, user="DA_AGENT_Y", password=pw, table_name="PATIENT_NOTE_VEC")
 analyst_tools = [*sql_tools, *create_datastore_tools(
-    {"patient_notes": notes}, embedding_model=emb)]
+    {"patient_notes": notes}, embedding_model=emb, top_k=6)]
 
 agent = create_deepagents_agent(
-    model=ChatOpenAI(model="openai.gpt-5.5",
-                     base_url=OCI_OPENAI_ENDPOINT,
-                     api_key=os.environ["OCI_GENAI_API_KEY"]),
+    model=ChatOpenAI(model="openai.gpt-5.5", base_url=OCI_GENAI_OPENAI_URL,
+                     api_key=os.environ["OCI_GENAI_API_KEY"]),  # a placeholder
     system_prompt=LEAD,
-    subagents=[chart_analyst, guideline, evidence],
-    middleware=[TodoListMiddleware(), *guards],
-    response_format=ToolStrategy(PreVisitBrief),
-)''', size=11)
-    card(s, 8.45, 1.9, 4.17, 1.9, "One credential in the process",
-         "OCI_GENAI_API_KEY is a placeholder inside the sandbox; OpenShell's proxy swaps in the real key on the way to OCI.", accent=GREEN)
-    card(s, 8.45, 4.05, 4.17, 1.9, "Schema-shaped output",
-         "ToolStrategy(PreVisitBrief) fixes the brief's sections; the runner renders and checks it before anyone reads it.", accent=TEAL)
-    notes(s, "The agent is ordinary langchain-oracle code. The interesting parts are what it does not hold: no OCI key, no write grant.")
+    subagents=[chart_analyst, guideline_researcher, evidence_researcher,
+               care_coordinator, medication_safety],
+    response_format=ToolStrategy(PreVisitBrief),       # the brief's shape, fixed
+    middleware=[TodoListMiddleware(), *guard_middleware(patient_id)],
+    checkpointer=OracleSaver(conn),                    # every step, in Oracle
+    store=OracleStore(conn, index={"dims": 384, "embed": emb, ...}),
+    memory=["/memories/patient-history.md"],           # loaded into the prompt
+    permissions=[FilesystemPermission(operations=["write"],
+                                      paths=["/memories/**"], mode="deny")],
+)''', size=10)
+    card(s, 8.75, 1.85, 3.87, 1.5, "No key in the process",
+         "OCI_GENAI_API_KEY is a placeholder inside the sandbox; the OpenShell gateway swaps in the real key on the way to OCI.", accent=GREEN, body_size=11.5)
+    card(s, 8.75, 3.5, 3.87, 1.5, "The brief has a schema",
+         "ToolStrategy(PreVisitBrief) fixes the sections; the runner renders it and the gate checks every id before anyone reads it.", accent=TEAL, body_size=11.5)
+    card(s, 8.75, 5.15, 3.87, 1.5, "State lives in Oracle",
+         "OracleSaver checkpoints each step; OracleStore holds the memory the agent reads at /memories/ and may never write.", accent=RED, body_size=11.5)
+    notes(s, "[5:45, 45 s] This is the agent, as in agent/brief_agent.py with the settings and the five specialist definitions left out. "
+             "create_deepagents_agent from langchain-oci composes the LangChain Deep Agents harness with Oracle: ADB datastores for the "
+             "specialists, OracleEmbeddings with provider=database, OracleSaver and OracleStore from langgraph-oracledb for checkpoints and "
+             "memory. The interesting parts are what the agent does not hold: no OCI key, no write grant, no write to its own memory.")
 
 
 def slide_data_layer(prs, blank):
@@ -542,7 +552,7 @@ def slide_data_layer(prs, blank):
          "returns only Y's rows. 300 background patients exist too, but agents only ever see them as percentiles (cohort_benchmark).", {"color": WHITE, "size": 12.5})]], line=1.15)
     text(s, 0.72, 6.28, 11.9, 0.25, "Schema, row-level security and policies are versioned Alembic migrations, so a reviewer can read exactly what the agents may do.", size=11, color=MUTED)
     repo(s, "migrations/versions/ · db/seed.py · db/embed.py · data/patients.py")
-    notes(s, "[6:00, 1 min] Relational and vector side by side in Oracle AI Database 26ai. OracleAutonomousDatabaseLoader reads the note rows, OracleTextSplitter "
+    notes(s, "[6:30, 45 s] Relational and vector side by side in Oracle AI Database 26ai. OracleAutonomousDatabaseLoader reads the note rows, OracleTextSplitter "
              "chunks them and OracleEmbeddings with provider=database embeds them in place; OracleVS writes the vector tables and Oracle Text adds keyword search.")
 
 
@@ -588,7 +598,7 @@ def slide_sql_safely(prs, blank):
         ("A tool filter is code the model's SQL could route around (a subquery, a view). The database applies the policy to every statement, "
          "whoever wrote it. scripts/verify.py --rls-only runs 25 such checks: 25 of 25 pass.", {"color": BODY, "size": 12.5})]], line=1.15)
     repo(s, "migrations/versions/0004_row_level_security.py · agent/sql_tools.py · scripts/verify.py --rls-only")
-    notes(s, "[7:00, 45 s] DA_PATIENT_SCOPE returns 1=1 for DA_OWNER, DA_CLINICIAN and DA_PHYSICIAN, patient_id = 'SYN-<k>' for DA_AGENT_<k>, and 1=0 for anyone else. "
+    notes(s, "[7:15, 45 s] DA_PATIENT_SCOPE returns 1=1 for DA_OWNER, DA_CLINICIAN and DA_PHYSICIAN, patient_id = 'SYN-<k>' for DA_AGENT_<k>, and 1=0 for anyone else. "
              "The same policy covers the PATIENT_NOTE_VEC vector table through JSON_VALUE(metadata, '$.patient_id').")
 
 
@@ -632,7 +642,7 @@ def slide_policy_in_action(prs, blank):
         ("run a brief, open Actions. The chain sits above the cards, read from policy_event and agent_escalation; the sandbox console prints "
          "“✕ POLICY CP-03” the moment the database refuses.", {"color": WHITE, "size": 12})]], line=1.12)
     repo(s, "migrations/versions/0007_care_policy.py · 0008_agent_policy.py · agent/care_tools.py · web/src/components/PolicyChain.tsx")
-    notes(s, "[7:45, 45 s] This is the moment to watch for in part 2 of the demo. care_policy holds CP-01a/b/c (clinician), CP-02 (physician) and CP-03 (allowed_proposer = medication-safety). "
+    notes(s, "[8:00, 45 s] This is the moment to watch for in part 2 of the demo. care_policy holds CP-01a/b/c (clinician), CP-02 (physician) and CP-03 (allowed_proposer = medication-safety). "
              "policy_event is written by an autonomous transaction, so the refusal survives the rollback. scripts/verify.py checks all of it; scripts/demo_e2e.py asserts it for X, Y and Z.")
 
 
@@ -664,7 +674,7 @@ def slide_four_layers(prs, blank):
         ("Input guard.", "Blocks SSN, phone, email, MRN, date of birth and other patients' ids."),
         ("Brief gate.", "Structure, length and every cited id, checked before acceptance."),
     ], size=13.5)
-    notes(s, "[8:30, 45 s] Each layer has its own transcript: safety_probe.sh 7/7, verify.py --rls-only 25/25, guard checks 7/7.")
+    notes(s, "[8:45, 30 s] Each layer has its own transcript: safety_probe.sh 7/7, verify.py --rls-only 25/25, guard checks 7/7.")
 
 
 def slide_why_openshell(prs, blank):
@@ -716,7 +726,7 @@ def slide_demo_start(prs, blank):
                  "The lead writes its plan; the chart analyst starts querying; the two researchers search in parallel",
                  "Leave it running (about five minutes) and come back to the slides"])
     notes(s, "[3:00, 1 min in the browser] Before the talk: open the web app on the OCI host, press Reset demo, check that Safety opens and Agents shows no run. "
-             "Start the run now: on the OCI host a Y brief takes four to five minutes, so it finishes while the next seven slides explain how it is built. "
+             "Start the run now: on the OCI host a Y brief takes four to five minutes, so it finishes while the next eight slides explain how it is built. "
              "Show the console for twenty seconds (two destinations allowed, the key is a placeholder, the plan appears), then switch back to the slides. "
              "Fallback if the network fails: the appendix slide 'The escalation, live' and docs/screenshots/.")
 
@@ -743,7 +753,7 @@ def slide_appendix_divider(prs, blank):
     text(s, 0.72, 1.8, 11.9, 1.0, "More detail, for the questions", size=40, color=WHITE, bold=True)
     groups = [
         ("The method", "Why Deep Agents fit the enterprise · Reverse-engineer the process · The scenario: three patients"),
-        ("The build", "Build the agent in thirty lines · How agents read the database · From brief to action"),
+        ("The build", "How agents read the database · From brief to action"),
         ("The controls", "The escalation, live · Why OpenShell · The grounding gate"),
         ("The run", "What you just saw · The application · Proposed actions · The agent remembers"),
         ("The proof", "Why Codex · Field notes"),
@@ -942,15 +952,16 @@ def slide_conclusion(prs, blank):
     notes(s, "[13:15, 30 s; a minute and a quarter left for questions] Close on the method: structural safety plus a grounding gate, reproducible from a spec.")
 
 
-# The talk, in order: sixteen slides for fifteen minutes. The concept; the
+# The talk, in order: seventeen slides for fifteen minutes. The concept; the
 # architecture, first the figure alone and then explained; the process it
 # copies; the live run starts; one run beat by beat, figure then explanation;
-# then what is running, until the browser comes back.
+# then what is running (the agent, its code, its data, its controls), until
+# the browser comes back.
 CORE = [slide_cover, slide_what_is_a_deep_agent, slide_architecture_diagram, slide_architecture, slide_process_table, slide_demo_start,
-        slide_sequence_diagram, slide_one_run, slide_deep_agent, slide_data_layer, slide_sql_safely, slide_policy_in_action, slide_four_layers,
-        slide_demo_back, slide_results, slide_conclusion]
+        slide_sequence_diagram, slide_one_run, slide_deep_agent, slide_build_code, slide_data_layer, slide_sql_safely, slide_policy_in_action,
+        slide_four_layers, slide_demo_back, slide_results, slide_conclusion]
 # Backup for questions, behind the divider, in the order the divider lists them.
-APPENDIX = [slide_appendix_divider, slide_why_enterprise, slide_reverse_engineer, slide_scenario, slide_build_code,
+APPENDIX = [slide_appendix_divider, slide_why_enterprise, slide_reverse_engineer, slide_scenario,
             slide_tools_table, slide_brief_to_action, slide_escalation_live, slide_why_openshell, slide_grounding_gate, slide_what_you_saw,
             slide_application, slide_actions_screen, slide_memory, slide_codex, slide_field_notes]
 
