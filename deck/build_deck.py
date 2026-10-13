@@ -770,8 +770,8 @@ def slide_application(prs, blank):
         figure(s, "../screenshots/02-agents-at-work.png", 0.72, 1.85, 5.8)
         figure(s, "../screenshots/06-timeline.png", 6.82, 1.85, 5.8)
         text(s, 0.72, 5.7, 11.9, 0.9, [[("Agents: ", {"bold": True, "color": INK, "size": 12.5}),
-            ("five tabs (patient, agents, brief, actions, memory); the sandbox console above, where each agent's step sits next to the network decision it caused, "
-             "and below it the lead's plan with one tab per specialist as the lead delegates.  ", {"size": 12.5}),
+            ("five tabs (patient, agents, brief, actions, memory); the lead's plan on top, one tab per specialist as the lead delegates, and below it the sandbox "
+             "console as an IDE's terminal: each agent's step next to the network decision it caused, sized by dragging the sash.  ", {"size": 12.5}),
             ("Timeline: ", {"bold": True, "color": INK, "size": 12.5}),
             ("every reasoning step, delegation, tool call with full arguments and result, the gate's verdicts, by agent; every area goes full screen.", {"size": 12.5})]])
     notes(s, "The UI is a thin client: FastAPI runs scripts/sandbox.sh and streams the agent channel and the console channel over SSE.")

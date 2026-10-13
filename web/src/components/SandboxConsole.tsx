@@ -82,9 +82,10 @@ function classify(line: string): Filter | "lifecycle" {
 }
 
 /** Every agent step, written from inside the sandbox, next to the network
- * decision the gateway made for it. One switch: agents, network, everything. */
+ * decision the gateway made for it. One switch: agents, network, everything;
+ * everything is the default, so the audience sees both sides of each step. */
 export const SandboxConsole = memo(function SandboxConsole({ lines, live }: { lines: string[]; live: boolean }) {
-  const [filter, setFilter] = useState<Filter>("agents");
+  const [filter, setFilter] = useState<Filter>("all");
   const box = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
 

@@ -8,6 +8,7 @@ import { AgentTrace } from "./AgentTrace";
 import { LaneCard } from "./LaneCard";
 import { Panel } from "./Panel";
 import { SandboxConsole } from "./SandboxConsole";
+import { SplitRows } from "./Split";
 import { Button, Empty, Label, NextLink, PageHeader } from "./ui";
 
 const TITLES: Record<string, string> = {
@@ -15,7 +16,8 @@ const TITLES: Record<string, string> = {
   blocked: "Blocked by the input guard", rejected: "Brief rejected by the gate", cancelled: "Run stopped",
 };
 
-/** The run: the sandbox console above, the lead and the specialists below. */
+/** The run, laid out like an IDE: the lead and the specialists on top, the
+ * sandbox console below as the terminal, with a sash to drag between them. */
 export function AgentsPage({ view, running, question, patientName, onBrief, onPatient }: {
   view: RunView; running: boolean; question: string; patientName: string; onBrief: () => void; onPatient: () => void;
 }) {
@@ -35,9 +37,9 @@ export function AgentsPage({ view, running, question, patientName, onBrief, onPa
       <PageHeader title={TITLES[view.status] ?? "Run"} subtitle={subtitle}>
         {view.brief && <NextLink onClick={onBrief}>Read the brief</NextLink>}
       </PageHeader>
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(220px,44%)_minmax(300px,1fr)] gap-3">
-        <SandboxConsole lines={view.console} live={running} />
-        <RunTabs view={view} question={question} patientName={patientName} now={now} />
+      <div className="min-h-0 flex-1">
+        <SplitRows top={<RunTabs view={view} question={question} patientName={patientName} now={now} />}
+          bottom={<SandboxConsole lines={view.console} live={running} />} />
       </div>
     </div>
   );
