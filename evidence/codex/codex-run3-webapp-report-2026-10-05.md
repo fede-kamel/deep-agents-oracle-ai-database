@@ -8,7 +8,7 @@ PASS  openshell CLI                      openshell 0.1.2
 PASS  gateway connected                  Version: 0.1.2
 PASS  sandbox image present              sha256:5b59a19d7836
 PASS  provider on gateway                deepagents-genai (key held by the gateway)
-PASS  config file                        /Users/federico.kamelhar/.config/deepagents-oracle-health/config.json
+PASS  config file                        ~/.config/deepagents-oracle-health/config.json
 PASS  secrets directory 0700             owner-only
 PASS  secret DA_OWNER present            present (not read)
 PASS  secret DA_AGENT_X present          present (not read)

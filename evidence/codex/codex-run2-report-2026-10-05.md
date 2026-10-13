@@ -31,9 +31,9 @@ Done. I ran SPEC 4.1, skipped 4.3 and 4.4 because their checkpoints already pass
 **Brief Runs**
 | Patient | Brief | Seconds | Tool calls | SQL | Searches | Delegations | Citations | Verify |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| X | [out/brief-X.md](/Users/federico.kamelhar/Projects/deepagents/out/brief-X.md) | 199.6 | 61 | 9 | 38 | 6 | 121 | `VERIFY OK (2/2)` |
-| Y | [out/brief-Y.md](/Users/federico.kamelhar/Projects/deepagents/out/brief-Y.md) | 170.6 | 33 | 4 | 18 | 3 | 166 | `VERIFY OK (2/2)` |
-| Z | [out/brief-Z.md](/Users/federico.kamelhar/Projects/deepagents/out/brief-Z.md) | 134.1 | 25 | 8 | 6 | 3 | 158 | `VERIFY OK (2/2)` |
+| X | [out/brief-X.md](~/Projects/deepagents/out/brief-X.md) | 199.6 | 61 | 9 | 38 | 6 | 121 | `VERIFY OK (2/2)` |
+| Y | [out/brief-Y.md](~/Projects/deepagents/out/brief-Y.md) | 170.6 | 33 | 4 | 18 | 3 | 166 | `VERIFY OK (2/2)` |
+| Z | [out/brief-Z.md](~/Projects/deepagents/out/brief-Z.md) | 134.1 | 25 | 8 | 6 | 3 | 158 | `VERIFY OK (2/2)` |
 
 **RLS**
 `uv run python scripts/verify.py --rls-only` passed: `VERIFY OK (14/14)`.

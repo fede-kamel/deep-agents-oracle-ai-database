@@ -1,10 +1,10 @@
 OpenAI Codex v0.159.3
 --------
-workdir: /Users/federico.kamelhar/Projects/deepagents
+workdir: ~/Projects/deepagents
 model: gpt-5.5
 provider: openai
 approval: on-request
-sandbox: workspace-write [workdir, /tmp, $TMPDIR, /Users/federico.kamelhar/.config/openshell, /Users/federico.kamelhar/.config/deepagents-oracle-health, /Users/federico.kamelhar/.rd, /Users/federico.kamelhar/.cache/uv, /Users/federico.kamelhar/.local/share/uv] (network access enabled)
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, ~/.config/openshell, ~/.config/deepagents-oracle-health, ~/.rd, ~/.cache/uv, ~/.local/share/uv] (network access enabled)
 reasoning effort: high
 reasoning summaries: none
 session id: 01a10ce0-be9d-7ae0-b55c-e6909f1cfe6f
@@ -39,11 +39,11 @@ warning: Configured value for `approval_policy` is disallowed by requirements; f
 codex
 I’ll read `codex/SPEC.md` end to end first, then I’ll surface the section 2 preflight table and start only the requested sections. I’ll treat the operator context as your answers and won’t touch the ADMIN/operator paths unless a checkpoint says they’re missing.
 exec
-/bin/zsh -lc 'wc -l codex/SPEC.md' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'wc -l codex/SPEC.md' in ~/Projects/deepagents
 exec
-/bin/zsh -lc "sed -n '1,240p' codex/SPEC.md" in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc "sed -n '1,240p' codex/SPEC.md" in ~/Projects/deepagents
 exec
-/bin/zsh -lc "sed -n '241,520p' codex/SPEC.md" in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc "sed -n '241,520p' codex/SPEC.md" in ~/Projects/deepagents
  succeeded in 53ms:
 # Specification: Deep Agents on your own data, safely
 
@@ -274,11 +274,11 @@ and what was done; and confirmation of section 5.2.
 codex
 I’ve read the full spec. Next I’m running the non-mutating preflight so I can show the section 2 table with actual pass/fail states, then I’ll verify the config/provider/operator checkpoints before build and data setup.
 exec
-/bin/zsh -lc 'scripts/preflight.sh </dev/null' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'scripts/preflight.sh </dev/null' in ~/Projects/deepagents
 exec
-/bin/zsh -lc 'python3 -m json.tool ~/.config/deepagents-oracle-health/config.json >/dev/null' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'python3 -m json.tool ~/.config/deepagents-oracle-health/config.json >/dev/null' in ~/Projects/deepagents
 exec
-/bin/zsh -lc 'openshell provider get deepagents-genai </dev/null' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'openshell provider get deepagents-genai </dev/null' in ~/Projects/deepagents
  succeeded in 118ms:
 Provider:
 
@@ -296,7 +296,7 @@ PASS  openshell CLI                      openshell 0.1.2
 PASS  gateway connected                    Version: 0.1.2
 PASS  sandbox image present              sha256:596d2f1c0b7a
 PASS  provider on gateway                deepagents-genai (key held by the gateway)
-PASS  config file                        /Users/federico.kamelhar/.config/deepagents-oracle-health/config.json
+PASS  config file                        ~/.config/deepagents-oracle-health/config.json
 PASS  secrets directory 0700             owner-only
 PASS  secret DA_OWNER present            present (not read)
 PASS  secret DA_AGENT_X present          present (not read)
@@ -311,7 +311,7 @@ PREFLIGHT OK
 codex
 Preflight is already green, including the four secret-presence checks and the provider checkpoint, so SPEC 4.3 and 4.4 are skipped as requested. I’m moving into 4.1 now: dependency sync and the Rancher Desktop image build/checkpoint.
 exec
-/bin/zsh -lc 'uv sync' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'uv sync' in ~/Projects/deepagents
  succeeded in 17ms:
 Resolved 114 packages in 5ms
 Checked 110 packages in 10ms
@@ -319,32 +319,32 @@ Checked 110 packages in 10ms
 codex
 `uv sync` was cached and clean. I’m building the sandbox image through Rancher Desktop’s Docker binary and then I’ll inspect the tag the spec names.
 exec
-/bin/zsh -lc '~/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc '~/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in ~/Projects/deepagents
  exited 1 in 245ms:
-ERROR: failed to build: failed to update builder last activity time: open /Users/federico.kamelhar/.docker/buildx/activity/.tmp-rancher-desktop1354560048: operation not permitted
+ERROR: failed to build: failed to update builder last activity time: open ~/.docker/buildx/activity/.tmp-rancher-desktop1354560048: operation not permitted
 
 exec
-/bin/zsh -lc '/Users/federico.kamelhar/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc '~/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in ~/Projects/deepagents
 2026-10-05T16:24:33.528818Z ERROR codex_app_server::bespoke_event_handling: request failed with client error: JSONRPCErrorError { code: -32000, data: None, message: "command execution approval is not supported in exec mode for thread `01a10ce0-be9d-7ae0-b55c-e6909f1cfe6f`" }
  exited 1:
 2026-10-05T16:24:33.530604Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"approval request failed\")" }
 codex
 The first Docker build hit a sandbox permission on Docker’s buildx activity file under `~/.docker`. Approval wasn’t available, so I’m going to keep Docker’s client config inside the repo for this command and retry without touching the global Docker config.
 exec
-/bin/zsh -lc 'mkdir -p .tmp/docker-config' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'mkdir -p .tmp/docker-config' in ~/Projects/deepagents
  succeeded in 0ms:
 exec
-/bin/zsh -lc 'ls -la .tmp' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'ls -la .tmp' in ~/Projects/deepagents
  succeeded in 0ms:
 total 0
-drwxr-xr-x@  3 federico.kamelhar  staff   96 Oct  5 12:29 .
-drwxr-xr-x@ 30 federico.kamelhar  staff  960 Oct  5 12:29 ..
-drwxr-xr-x@  2 federico.kamelhar  staff   64 Oct  5 12:29 docker-config
+drwxr-xr-x@  3 user  staff   96 Oct  5 12:29 .
+drwxr-xr-x@ 30 user  staff  960 Oct  5 12:29 ..
+drwxr-xr-x@  2 user  staff   64 Oct  5 12:29 docker-config
 
 codex
 The local Docker config directory is ready. Retrying the build now; if Rancher itself needs a broader host-side write, I’ll pause at that point instead of forcing it.
 exec
-/bin/zsh -lc 'DOCKER_CONFIG=/Users/federico.kamelhar/Projects/deepagents/.tmp/docker-config /Users/federico.kamelhar/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'DOCKER_CONFIG=~/Projects/deepagents/.tmp/docker-config ~/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in ~/Projects/deepagents
  exited 1 in 102ms:
 DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
             Install the buildx component to build images with BuildKit:
@@ -355,30 +355,30 @@ failed to connect to the docker API at unix:///var/run/docker.sock; check if the
 codex
 Using an isolated Docker config lost Rancher’s context, so it looked for the default `/var/run/docker.sock`. I’m checking Rancher’s socket/context location next and will point Docker at that directly if it’s available.
 exec
-/bin/zsh -lc "find /Users/federico.kamelhar/.rd -maxdepth 4 -type s -o -name '*sock*'" in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc "find ~/.rd -maxdepth 4 -type s -o -name '*sock*'" in ~/Projects/deepagents
 exec
-/bin/zsh -lc '/Users/federico.kamelhar/.rd/bin/docker context ls' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc '~/.rd/bin/docker context ls' in ~/Projects/deepagents
 exec
-/bin/zsh -lc 'ls -la /Users/federico.kamelhar/.rd' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'ls -la ~/.rd' in ~/Projects/deepagents
  succeeded in 41ms:
-/Users/federico.kamelhar/.rd/docker.sock
+~/.rd/docker.sock
 
  succeeded in 52ms:
 NAME                DESCRIPTION                               DOCKER ENDPOINT                                   ERROR
 default             Current DOCKER_HOST based configuration   unix:///var/run/docker.sock                       
-rancher-desktop *   Rancher Desktop moby context              unix:///Users/federico.kamelhar/.rd/docker.sock   
+rancher-desktop *   Rancher Desktop moby context              unix://~/.rd/docker.sock   
 
  succeeded in 47ms:
 total 0
-drwxr-xr-x@   4 federico.kamelhar  staff   128 Sep 29 13:58 .
-drwxr-x---+ 248 federico.kamelhar  staff  7936 Oct  5 12:29 ..
-drwxr-xr-x@  14 federico.kamelhar  staff   448 Sep 29 13:57 bin
-srw-------@   1 federico.kamelhar  staff     0 Sep 29 13:58 docker.sock
+drwxr-xr-x@   4 user  staff   128 Sep 29 13:58 .
+drwxr-x---+ 248 user  staff  7936 Oct  5 12:29 ..
+drwxr-xr-x@  14 user  staff   448 Sep 29 13:57 bin
+srw-------@   1 user  staff     0 Sep 29 13:58 docker.sock
 
 codex
 Rancher’s Docker socket is at `~/.rd/docker.sock`. I’m retrying the build with both an in-repo Docker config and Rancher’s socket explicitly set.
 exec
-/bin/zsh -lc 'DOCKER_CONFIG=/Users/federico.kamelhar/Projects/deepagents/.tmp/docker-config DOCKER_HOST=unix:///Users/federico.kamelhar/.rd/docker.sock /Users/federico.kamelhar/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'DOCKER_CONFIG=~/Projects/deepagents/.tmp/docker-config DOCKER_HOST=unix://~/.rd/docker.sock ~/.rd/bin/docker build -t deepagents-oracle-health:0.1 sandbox/' in ~/Projects/deepagents
  succeeded in 25423ms:
 DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
             Install the buildx component to build images with BuildKit:
@@ -530,12 +530,12 @@ Successfully built 5c1a9330bfe8
 Successfully tagged deepagents-oracle-health:0.1
 
 exec
-/bin/zsh -lc 'DOCKER_CONFIG=/Users/federico.kamelhar/Projects/deepagents/.tmp/docker-config DOCKER_HOST=unix:///Users/federico.kamelhar/.rd/docker.sock /Users/federico.kamelhar/.rd/bin/docker image inspect deepagents-oracle-health:0.1 >/dev/null' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'DOCKER_CONFIG=~/Projects/deepagents/.tmp/docker-config DOCKER_HOST=unix://~/.rd/docker.sock ~/.rd/bin/docker image inspect deepagents-oracle-health:0.1 >/dev/null' in ~/Projects/deepagents
  succeeded in 0ms:
 codex
 Image checkpoint passed. I’m starting SPEC 4.5 data setup now; this is the migrations, synthetic seed data, and in-database embedding pass, so it may take a few minutes.
 exec
-/bin/zsh -lc 'scripts/setup-data.sh </dev/null' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'scripts/setup-data.sh </dev/null' in ~/Projects/deepagents
  exited 1 in 6983ms:
 $ alembic upgrade head
 Traceback (most recent call last):
@@ -544,66 +544,66 @@ Traceback (most recent call last):
   File "src/oracledb/impl/thin/protocol.pyx", line 470, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/messages/connect.pyx", line 102, in oracledb.thin_impl.ConnectMessage.process
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 oracledb.exceptions.OperationalError: DPY-6000: Listener refused connection. (Similar to ORA-12506)
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
     self._dbapi_connection = engine.raw_connection()
                              ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
     return self.pool.connect()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
     return _ConnectionFairy._checkout(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
     fairy = _ConnectionRecord.checkout(pool)
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
     rec = pool._do_get()
           ^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
     return self._create_connection()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
     return _ConnectionRecord(self)
            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
     self.__connect()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
     self.dbapi_connection = connection = pool._invoke_creator(self)
                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
     return dialect.connect(*cargs_tup, **cparams)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
     return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
     return conn_class(dsn=dsn, pool=pool, params=params, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
     impl.connect(params_impl)
   File "src/oracledb/impl/thin/connection.pyx", line 526, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 522, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 465, in oracledb.thin_impl.ThinConnImpl._connect_with_params
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/connection.pyx", line 408, in oracledb.thin_impl.ThinConnImpl._connect_with_address
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 oracledb.exceptions.OperationalError: DPY-6005: cannot connect to database (CONNECTION_ID=yomC/caOy2TMHwUeNMBzGg==).
 DPY-6000: Listener refused connection. (Similar to ORA-12506)
@@ -611,92 +611,92 @@ DPY-6000: Listener refused connection. (Similar to ORA-12506)
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/bin/alembic", line 10, in <module>
+  File "~/Projects/deepagents/.venv/bin/alembic", line 10, in <module>
     sys.exit(main())
              ^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1039, in main
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1039, in main
     CommandLine(prog=prog).main(argv=argv)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1029, in main
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1029, in main
     self.run_cmd(cfg, options)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 963, in run_cmd
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 963, in run_cmd
     fn(
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/command.py", line 487, in upgrade
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/command.py", line 487, in upgrade
     script.run_env()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
     util.load_python_file(self.dir, "env.py")
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
     module = load_module_py(module_id, path)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
     spec.loader.exec_module(module)  # type: ignore
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/Users/federico.kamelhar/Projects/deepagents/migrations/env.py", line 24, in <module>
+  File "~/Projects/deepagents/migrations/env.py", line 24, in <module>
     run_migrations_online()
-  File "/Users/federico.kamelhar/Projects/deepagents/migrations/env.py", line 16, in run_migrations_online
+  File "~/Projects/deepagents/migrations/env.py", line 16, in run_migrations_online
     with engine.connect() as connection:
          ^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3260, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3260, in connect
     return self._connection_cls(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 151, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 151, in __init__
     Connection._handle_dbapi_exception_noconnection(
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2417, in _handle_dbapi_exception_noconnection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2417, in _handle_dbapi_exception_noconnection
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
     self._dbapi_connection = engine.raw_connection()
                              ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
     return self.pool.connect()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
     return _ConnectionFairy._checkout(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
     fairy = _ConnectionRecord.checkout(pool)
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
     rec = pool._do_get()
           ^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
     return self._create_connection()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
     return _ConnectionRecord(self)
            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
     self.__connect()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
     self.dbapi_connection = connection = pool._invoke_creator(self)
                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
     return dialect.connect(*cargs_tup, **cparams)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
     return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
     return conn_class(dsn=dsn, pool=pool, params=params, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
     impl.connect(params_impl)
   File "src/oracledb/impl/thin/connection.pyx", line 526, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 522, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 465, in oracledb.thin_impl.ThinConnImpl._connect_with_params
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/connection.pyx", line 408, in oracledb.thin_impl.ThinConnImpl._connect_with_address
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 sqlalchemy.exc.OperationalError: (oracledb.exceptions.OperationalError) DPY-6005: cannot connect to database (CONNECTION_ID=yomC/caOy2TMHwUeNMBzGg==).
 DPY-6000: Listener refused connection. (Similar to ORA-12506)
@@ -705,7 +705,7 @@ DPY-6000: Listener refused connection. (Similar to ORA-12506)
 codex
 SPEC 4.5 failed on the first command with `DPY-6000 ... ORA-12506`, which section 7 maps to the database listener refusing this machine, usually an ACL issue. Because preflight connected successfully moments earlier, I’m treating this as a retryable refusal first and will retry 4.5 once; if it repeats, I’ll stop for the ACL/operator fix.
 exec
-/bin/zsh -lc 'scripts/setup-data.sh </dev/null' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'scripts/setup-data.sh </dev/null' in ~/Projects/deepagents
  exited 1 in 6753ms:
 $ alembic upgrade head
 Traceback (most recent call last):
@@ -714,66 +714,66 @@ Traceback (most recent call last):
   File "src/oracledb/impl/thin/protocol.pyx", line 470, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/messages/connect.pyx", line 102, in oracledb.thin_impl.ConnectMessage.process
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 oracledb.exceptions.OperationalError: DPY-6000: Listener refused connection. (Similar to ORA-12506)
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
     self._dbapi_connection = engine.raw_connection()
                              ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
     return self.pool.connect()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
     return _ConnectionFairy._checkout(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
     fairy = _ConnectionRecord.checkout(pool)
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
     rec = pool._do_get()
           ^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
     return self._create_connection()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
     return _ConnectionRecord(self)
            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
     self.__connect()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
     self.dbapi_connection = connection = pool._invoke_creator(self)
                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
     return dialect.connect(*cargs_tup, **cparams)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
     return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
     return conn_class(dsn=dsn, pool=pool, params=params, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
     impl.connect(params_impl)
   File "src/oracledb/impl/thin/connection.pyx", line 526, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 522, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 465, in oracledb.thin_impl.ThinConnImpl._connect_with_params
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/connection.pyx", line 408, in oracledb.thin_impl.ThinConnImpl._connect_with_address
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 oracledb.exceptions.OperationalError: DPY-6005: cannot connect to database (CONNECTION_ID=hilqxWwruYmESxjNrbnNOA==).
 DPY-6000: Listener refused connection. (Similar to ORA-12506)
@@ -781,92 +781,92 @@ DPY-6000: Listener refused connection. (Similar to ORA-12506)
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/bin/alembic", line 10, in <module>
+  File "~/Projects/deepagents/.venv/bin/alembic", line 10, in <module>
     sys.exit(main())
              ^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1039, in main
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1039, in main
     CommandLine(prog=prog).main(argv=argv)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1029, in main
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1029, in main
     self.run_cmd(cfg, options)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 963, in run_cmd
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 963, in run_cmd
     fn(
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/command.py", line 487, in upgrade
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/command.py", line 487, in upgrade
     script.run_env()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
     util.load_python_file(self.dir, "env.py")
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
     module = load_module_py(module_id, path)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
     spec.loader.exec_module(module)  # type: ignore
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/Users/federico.kamelhar/Projects/deepagents/migrations/env.py", line 24, in <module>
+  File "~/Projects/deepagents/migrations/env.py", line 24, in <module>
     run_migrations_online()
-  File "/Users/federico.kamelhar/Projects/deepagents/migrations/env.py", line 16, in run_migrations_online
+  File "~/Projects/deepagents/migrations/env.py", line 16, in run_migrations_online
     with engine.connect() as connection:
          ^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3260, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3260, in connect
     return self._connection_cls(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 151, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 151, in __init__
     Connection._handle_dbapi_exception_noconnection(
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2417, in _handle_dbapi_exception_noconnection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2417, in _handle_dbapi_exception_noconnection
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
     self._dbapi_connection = engine.raw_connection()
                              ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
     return self.pool.connect()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
     return _ConnectionFairy._checkout(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
     fairy = _ConnectionRecord.checkout(pool)
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
     rec = pool._do_get()
           ^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
     return self._create_connection()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
     return _ConnectionRecord(self)
            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
     self.__connect()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
     self.dbapi_connection = connection = pool._invoke_creator(self)
                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
     return dialect.connect(*cargs_tup, **cparams)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
     return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
     return conn_class(dsn=dsn, pool=pool, params=params, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
     impl.connect(params_impl)
   File "src/oracledb/impl/thin/connection.pyx", line 526, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 522, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 465, in oracledb.thin_impl.ThinConnImpl._connect_with_params
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/connection.pyx", line 408, in oracledb.thin_impl.ThinConnImpl._connect_with_address
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 sqlalchemy.exc.OperationalError: (oracledb.exceptions.OperationalError) DPY-6005: cannot connect to database (CONNECTION_ID=hilqxWwruYmESxjNrbnNOA==).
 DPY-6000: Listener refused connection. (Similar to ORA-12506)
@@ -875,12 +875,12 @@ DPY-6000: Listener refused connection. (Similar to ORA-12506)
 codex
 The retry hit the same `DPY-6000 ... ORA-12506` at Alembic connect. I’m going to give it one final retry after a short pause, staying within the “at most twice” limit; if it repeats, the section 7 action is to have you update the database ACL before I continue.
 exec
-/bin/zsh -lc 'sleep 30' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'sleep 30' in ~/Projects/deepagents
  succeeded in 29978ms:
 codex
 Pause complete; running the last allowed 4.5 retry now.
 exec
-/bin/zsh -lc 'scripts/setup-data.sh </dev/null' in /Users/federico.kamelhar/Projects/deepagents
+/bin/zsh -lc 'scripts/setup-data.sh </dev/null' in ~/Projects/deepagents
  exited 1 in 6717ms:
 $ alembic upgrade head
 Traceback (most recent call last):
@@ -889,66 +889,66 @@ Traceback (most recent call last):
   File "src/oracledb/impl/thin/protocol.pyx", line 470, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/messages/connect.pyx", line 102, in oracledb.thin_impl.ConnectMessage.process
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 oracledb.exceptions.OperationalError: DPY-6000: Listener refused connection. (Similar to ORA-12506)
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
     self._dbapi_connection = engine.raw_connection()
                              ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
     return self.pool.connect()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
     return _ConnectionFairy._checkout(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
     fairy = _ConnectionRecord.checkout(pool)
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
     rec = pool._do_get()
           ^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
     return self._create_connection()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
     return _ConnectionRecord(self)
            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
     self.__connect()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
     self.dbapi_connection = connection = pool._invoke_creator(self)
                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
     return dialect.connect(*cargs_tup, **cparams)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
     return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
     return conn_class(dsn=dsn, pool=pool, params=params, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
     impl.connect(params_impl)
   File "src/oracledb/impl/thin/connection.pyx", line 526, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 522, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 465, in oracledb.thin_impl.ThinConnImpl._connect_with_params
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/connection.pyx", line 408, in oracledb.thin_impl.ThinConnImpl._connect_with_address
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 oracledb.exceptions.OperationalError: DPY-6005: cannot connect to database (CONNECTION_ID=eRGuSvfRYo/kVi+x8dftXQ==).
 DPY-6000: Listener refused connection. (Similar to ORA-12506)
@@ -956,92 +956,92 @@ DPY-6000: Listener refused connection. (Similar to ORA-12506)
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/bin/alembic", line 10, in <module>
+  File "~/Projects/deepagents/.venv/bin/alembic", line 10, in <module>
     sys.exit(main())
              ^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1039, in main
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1039, in main
     CommandLine(prog=prog).main(argv=argv)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1029, in main
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 1029, in main
     self.run_cmd(cfg, options)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 963, in run_cmd
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/config.py", line 963, in run_cmd
     fn(
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/command.py", line 487, in upgrade
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/command.py", line 487, in upgrade
     script.run_env()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
     util.load_python_file(self.dir, "env.py")
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
     module = load_module_py(module_id, path)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
     spec.loader.exec_module(module)  # type: ignore
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen importlib._bootstrap_external>", line 999, in exec_module
   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/Users/federico.kamelhar/Projects/deepagents/migrations/env.py", line 24, in <module>
+  File "~/Projects/deepagents/migrations/env.py", line 24, in <module>
     run_migrations_online()
-  File "/Users/federico.kamelhar/Projects/deepagents/migrations/env.py", line 16, in run_migrations_online
+  File "~/Projects/deepagents/migrations/env.py", line 16, in run_migrations_online
     with engine.connect() as connection:
          ^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3260, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3260, in connect
     return self._connection_cls(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 151, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 151, in __init__
     Connection._handle_dbapi_exception_noconnection(
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2417, in _handle_dbapi_exception_noconnection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2417, in _handle_dbapi_exception_noconnection
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 149, in __init__
     self._dbapi_connection = engine.raw_connection()
                              ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3284, in raw_connection
     return self.pool.connect()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 445, in connect
     return _ConnectionFairy._checkout(self)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1303, in _checkout
     fairy = _ConnectionRecord.checkout(pool)
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 709, in checkout
     rec = pool._do_get()
           ^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/impl.py", line 174, in _do_get
     return self._create_connection()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 386, in _create_connection
     return _ConnectionRecord(self)
            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 671, in __init__
     self.__connect()
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 906, in __connect
     with util.safe_reraise():
          ^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 166, in __exit__
     raise exc_value.with_traceback(exc_tb)
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 902, in __connect
     self.dbapi_connection = connection = pool._invoke_creator(self)
                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 645, in connect
     return dialect.connect(*cargs_tup, **cparams)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 869, in connect
     return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 1698, in connect
     return conn_class(dsn=dsn, pool=pool, params=params, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/connection.py", line 892, in __init__
     impl.connect(params_impl)
   File "src/oracledb/impl/thin/connection.pyx", line 526, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 522, in oracledb.thin_impl.ThinConnImpl.connect
   File "src/oracledb/impl/thin/connection.pyx", line 465, in oracledb.thin_impl.ThinConnImpl._connect_with_params
   File "src/oracledb/impl/thin/protocol.pyx", line 446, in oracledb.thin_impl.Protocol._process_message
   File "src/oracledb/impl/thin/connection.pyx", line 408, in oracledb.thin_impl.ThinConnImpl._connect_with_address
-  File "/Users/federico.kamelhar/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
+  File "~/Projects/deepagents/.venv/lib/python3.12/site-packages/oracledb/errors.py", line 199, in _raise_err
     raise error.exc_type(error) from cause
 sqlalchemy.exc.OperationalError: (oracledb.exceptions.OperationalError) DPY-6005: cannot connect to database (CONNECTION_ID=eRGuSvfRYo/kVi+x8dftXQ==).
 DPY-6000: Listener refused connection. (Similar to ORA-12506)
