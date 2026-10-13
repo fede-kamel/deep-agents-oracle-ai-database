@@ -8,7 +8,7 @@ copyright footer. Run metrics are read from the event logs, so the numbers on
 the slides are the numbers in the evidence.
 
 The talk is fifteen minutes. CORE lists the twelve slides shown, in order: the
-live run starts at minute three and finishes while the next five slides explain
+live run starts at minute three and finishes while the next seven slides explain
 the build; the browser comes back at minute nine. APPENDIX lists the backup
 slides, behind a divider and with an "Appendix" kicker. The speaker notes of
 every core slide start with its minute mark.
@@ -295,7 +295,7 @@ def slide_cover(prs, blank):
     s.shapes.add_picture(str(LOGOS / "langchain-white.png"), Inches(2.82), Inches(1.12), height=Inches(0.36))
     rect(s, 4.67, 1.1, 0.02, 0.4, RGBColor(0x8F, 0xA6, 0xAD))
     s.shapes.add_picture(str(LOGOS / "nvidia-white-mono.png"), Inches(4.87), Inches(1.12), height=Inches(0.36))
-    notes(s, "[0:00, 30 s] Fifteen minutes: thirteen slides; the architecture at minute one, the live run starts at minute three and is shown at minute nine; everything after the conclusion is appendix. "
+    notes(s, "[0:00, 30 s] Fifteen minutes: sixteen slides; the architecture at minute one, the live run starts at minute three, one run beat by beat at minute four, and the browser comes back after minute nine; everything after the conclusion is appendix. "
              "Deep Agents on your own data: a LangChain Deep Agent, built with the open-source langchain-oracle packages, "
              "writes a pre-visit clinical brief from Oracle AI Database 26ai, inside an NVIDIA OpenShell sandbox. "
              "Every patient is synthetic.")
@@ -391,7 +391,7 @@ def slide_process_table(prs, blank):
     text(s, 0.72, 5.65, 11.9, 0.8, [[("Nothing new was invented for the agents: ", {"bold": True, "color": INK, "size": 13}),
         ("each one does a step a person does today, with that person’s data and that person’s limits. The people who sign today still sign.", {"color": BODY, "size": 13})]], line=1.15)
     repo(s, "agent/brief_agent.py (one prompt per role) · migrations/versions/0006-0008 (the controls)")
-    notes(s, "[2:15, 45 s] The method in one breath: observe how the clinic prepares a visit today, split it into roles and steps, map each control "
+    notes(s, "[2:30, 30 s] The method in one breath: observe how the clinic prepares a visit today, split it into roles and steps, map each control "
              "(a source becomes a tool, a rule becomes a database policy, a signature becomes an approval), then prove it on synthetic cases. "
              "Run a finger down the table: the five specialists of the architecture slide are these five roles. The point for any enterprise process "
              "(claims, procurement, KYC, incident review) is the same mapping: roles to agents, sources to tools, rules to database policies, signatures to approvals.")
@@ -424,21 +424,46 @@ def slide_scenario(prs, blank):
     notes(s, "Each chart is hand-written to carry findings a careful clinician would raise. No real patient data is used anywhere, by design and by policy.")
 
 
-def slide_architecture(prs, blank):
-    """the whole system in one picture, before the demo starts"""
+def diagram(prs, blank, name):
+    """A figure alone on the slide, as large as the slide allows. The figure
+    carries its own title; the slide after it explains."""
     s = prs.slides.add_slide(blank)
-    header(s, "One question in, a cited brief out", "The architecture")
-    figure(s, "figure1-architecture.png", 0.72, 1.85, 7.25, max_h=5.0)
-    bullets(s, 8.3, 1.95, 4.35, 4.9, [
-        ("The clinician asks.", "Picks a patient in the web app and sends one question. Codex runs the same scripts to rebuild and rerun the demo."),
-        ("A Deep Agent, in an OpenShell sandbox.", "Built with langchain-oci: a lead plans and delegates to five specialists; a gate accepts the brief only if every cited id exists."),
-        ("Oracle AI Database holds the data.", "The chart, the vector stores, the embedding model, the agent's memory and checkpoints; row-level security gives each agent one patient."),
-        ("OCI Generative AI runs the models.", "GPT-5.5 leads, Gemini 2.5 Flash runs the specialists. The key is a placeholder the gateway swaps in transit; nothing else is reachable."),
-    ], size=13.5)
-    notes(s, "[1:15, 1 min] The whole system in one picture, left to right: a clinician asks in the web app (Codex can drive the same scripts); "
-             "the Deep Agent runs inside an OpenShell sandbox, one patient per run; it reads Oracle AI Database (the chart, the vectors, the embedding "
-             "model, under row-level security) and calls OCI Generative AI through the gateway, which holds the key. Nothing else is reachable. "
-             "Everything the demo shows from minute three happens inside the green box; the next slide says which person each specialist stands in for.")
+    figure(s, name, 0.72, 0.3, 11.9, max_h=6.55)
+    text(s, 0.72, 7.06, 11.9, 0.3, FOOTER, size=8, color=MUTED)
+    return s
+
+
+def slide_architecture_diagram(prs, blank):
+    """the architecture, the figure alone"""
+    s = diagram(prs, blank, "figure1-architecture.png")
+    notes(s, "[1:15, 30 s] The whole system in one picture, left to right: a clinician asks in the web app (Codex can drive the same scripts); "
+             "the Deep Agent runs inside an OpenShell sandbox, one patient per run; it reads Oracle AI Database and calls OCI Generative AI through "
+             "the gateway, which holds the key. Point at the three numbered arrows: the question in, SQL and vector search, the model calls. "
+             "Nothing else is reachable. The next slide explains each part.")
+
+
+def slide_architecture(prs, blank):
+    """the architecture, explained"""
+    s = prs.slides.add_slide(blank)
+    header(s, "One question in, a cited brief out", "The architecture, explained")
+    parts = [
+        ("The clinician asks", "Picks a patient in the web app and sends one question. Codex can run the same scripts to rebuild and rerun the whole demo from one specification.", TEAL),
+        ("A Deep Agent, inside an OpenShell sandbox", "Built with langchain-oci: a lead plans and delegates to five specialists, and a gate accepts the brief only if every cited id exists. One sandbox per run, deleted at the end.", GREEN),
+        ("Oracle AI Database holds the data", "The relational chart, the vector stores, the embedding model, the agent's memory and checkpoints, in one database. Row-level security gives each agent login one patient.", RED),
+        ("OCI Generative AI runs the models", "GPT-5.5 leads, Gemini 2.5 Flash runs the specialists, through an OpenAI-compatible endpoint. The key is a placeholder; the gateway swaps in the real one in transit.", OCHRE),
+    ]
+    for i, (t, b, c) in enumerate(parts):
+        x = 0.72 + (i % 2) * 6.05
+        y = 1.85 + (i // 2) * 2.1
+        rect(s, x, y, 5.85, 1.9, SAND, line=CARD_LINE)
+        rect(s, x, y, 0.07, 1.9, c)
+        text(s, x + 0.3, y + 0.2, 5.35, 1.6, [[(t, {"bold": True, "size": 16, "color": c})], [(b, {"size": 12.5, "color": BODY})]], line=1.15)
+    rect(s, 0.72, 6.1, 11.9, 0.75, TEAL)
+    text(s, 0.98, 6.2, 11.4, 0.55, [[("Nothing else is reachable. ", {"bold": True, "color": WHITE, "size": 13.5}),
+        ("Two destinations have a rule; every other connection is refused before it opens, and the console shows each decision as it happens.", {"color": WHITE, "size": 13})]], line=1.15)
+    notes(s, "[1:45, 45 s] Four parts, in the colours of the figure's legend: the person, the sandbox, the database, the models. "
+             "The database decides what the agent can read and write; the sandbox decides where anything it read can go; the gate decides what it can say. "
+             "None of the three asks the agent to behave; that is the thread of the talk. Next: which person each specialist stands in for.")
 
 
 def slide_deep_agent(prs, blank):
@@ -454,7 +479,7 @@ def slide_deep_agent(prs, blank):
         ("Medication safety.", "The only agent allowed to propose a medication change; a doctor approves it."),
         ("Models.", "GPT-5.5 leads; Gemini 2.5 Flash runs the specialists, both on OCI Generative AI."),
     ], size=13.5)
-    notes(s, "[4:00, 1 min] The run is going in the browser; this is what is running. create_deepagents_agent from langchain-oci composes the LangChain Deep Agents harness with Oracle datastores. "
+    notes(s, "[5:00, 1 min] The run is going in the browser; this is what is running inside the sandbox. create_deepagents_agent from langchain-oci composes the LangChain Deep Agents harness with Oracle datastores. "
              "Specialists each get a single-store tool set so routing is explicit.")
 
 
@@ -517,7 +542,7 @@ def slide_data_layer(prs, blank):
          "returns only Y's rows. 300 background patients exist too, but agents only ever see them as percentiles (cohort_benchmark).", {"color": WHITE, "size": 12.5})]], line=1.15)
     text(s, 0.72, 6.28, 11.9, 0.25, "Schema, row-level security and policies are versioned Alembic migrations, so a reviewer can read exactly what the agents may do.", size=11, color=MUTED)
     repo(s, "migrations/versions/ · db/seed.py · db/embed.py · data/patients.py")
-    notes(s, "[5:00, 1 min] Relational and vector side by side in Oracle AI Database 26ai. OracleAutonomousDatabaseLoader reads the note rows, OracleTextSplitter "
+    notes(s, "[6:00, 1 min] Relational and vector side by side in Oracle AI Database 26ai. OracleAutonomousDatabaseLoader reads the note rows, OracleTextSplitter "
              "chunks them and OracleEmbeddings with provider=database embeds them in place; OracleVS writes the vector tables and Oracle Text adds keyword search.")
 
 
@@ -563,7 +588,7 @@ def slide_sql_safely(prs, blank):
         ("A tool filter is code the model's SQL could route around (a subquery, a view). The database applies the policy to every statement, "
          "whoever wrote it. scripts/verify.py --rls-only runs 25 such checks: 25 of 25 pass.", {"color": BODY, "size": 12.5})]], line=1.15)
     repo(s, "migrations/versions/0004_row_level_security.py · agent/sql_tools.py · scripts/verify.py --rls-only")
-    notes(s, "[6:00, 1 min] DA_PATIENT_SCOPE returns 1=1 for DA_OWNER, DA_CLINICIAN and DA_PHYSICIAN, patient_id = 'SYN-<k>' for DA_AGENT_<k>, and 1=0 for anyone else. "
+    notes(s, "[7:00, 45 s] DA_PATIENT_SCOPE returns 1=1 for DA_OWNER, DA_CLINICIAN and DA_PHYSICIAN, patient_id = 'SYN-<k>' for DA_AGENT_<k>, and 1=0 for anyone else. "
              "The same policy covers the PATIENT_NOTE_VEC vector table through JSON_VALUE(metadata, '$.patient_id').")
 
 
@@ -607,7 +632,7 @@ def slide_policy_in_action(prs, blank):
         ("run a brief, open Actions. The chain sits above the cards, read from policy_event and agent_escalation; the sandbox console prints "
          "“✕ POLICY CP-03” the moment the database refuses.", {"color": WHITE, "size": 12})]], line=1.12)
     repo(s, "migrations/versions/0007_care_policy.py · 0008_agent_policy.py · agent/care_tools.py · web/src/components/PolicyChain.tsx")
-    notes(s, "[7:00, 1 min] This is the moment to watch for in part 2 of the demo. care_policy holds CP-01a/b/c (clinician), CP-02 (physician) and CP-03 (allowed_proposer = medication-safety). "
+    notes(s, "[7:45, 45 s] This is the moment to watch for in part 2 of the demo. care_policy holds CP-01a/b/c (clinician), CP-02 (physician) and CP-03 (allowed_proposer = medication-safety). "
              "policy_event is written by an autonomous transaction, so the refusal survives the rollback. scripts/verify.py checks all of it; scripts/demo_e2e.py asserts it for X, Y and Z.")
 
 
@@ -639,7 +664,7 @@ def slide_four_layers(prs, blank):
         ("Input guard.", "Blocks SSN, phone, email, MRN, date of birth and other patients' ids."),
         ("Brief gate.", "Structure, length and every cited id, checked before acceptance."),
     ], size=13.5)
-    notes(s, "[8:00, 1 min] Each layer has its own transcript: safety_probe.sh 7/7, verify.py --rls-only 25/25, guard checks 7/7.")
+    notes(s, "[8:30, 45 s] Each layer has its own transcript: safety_probe.sh 7/7, verify.py --rls-only 25/25, guard checks 7/7.")
 
 
 def slide_why_openshell(prs, blank):
@@ -691,7 +716,7 @@ def slide_demo_start(prs, blank):
                  "The lead writes its plan; the chart analyst starts querying; the two researchers search in parallel",
                  "Leave it running (about five minutes) and come back to the slides"])
     notes(s, "[3:00, 1 min in the browser] Before the talk: open the web app on the OCI host, press Reset demo, check that Safety opens and Agents shows no run. "
-             "Start the run now: on the OCI host a Y brief takes four to five minutes, so it finishes while the next five slides explain how it is built. "
+             "Start the run now: on the OCI host a Y brief takes four to five minutes, so it finishes while the next seven slides explain how it is built. "
              "Show the console for twenty seconds (two destinations allowed, the key is a placeholder, the plan appears), then switch back to the slides. "
              "Fallback if the network fails: the appendix slide 'The escalation, live' and docs/screenshots/.")
 
@@ -704,7 +729,7 @@ def slide_demo_back(prs, blank):
                  "Brief: every claim carries the id of a row, a note or a source; the gate checked each one in the database",
                  "Actions: approve the labs as the clinician; the medication change refuses you (CP-02); approve it as the doctor",
                  "Memory: the decisions are recorded for the next brief. Reset demo: a clean slate in seconds"])
-    notes(s, "[9:00, 3.5 min in the browser] Agents first: the run is finished; scroll the console to the red '✕ POLICY CP-03' line and the escalation after it. "
+    notes(s, "[9:15, 3 min 15 s in the browser] Agents first: the run is finished; scroll the console to the red '✕ POLICY CP-03' line and the escalation after it. "
              "Then Brief: point at the chips (SQL tables, SYN-Y notes, MEDQUAD and PMID ids). Then Actions: the chain above the cards; approve the lab request as the clinician; "
              "click Approve as clinician on the medication change and read the database's refusal; approve it as the doctor. Finish on Memory. "
              "If the run is still going: show the Timeline tab and the specialists so far, then use the appendix slide 'The escalation, live' for the policy part.")
@@ -720,7 +745,7 @@ def slide_appendix_divider(prs, blank):
         ("The method", "Why Deep Agents fit the enterprise · Reverse-engineer the process · The scenario: three patients"),
         ("The build", "Build the agent in thirty lines · How agents read the database · From brief to action"),
         ("The controls", "The escalation, live · Why OpenShell · The grounding gate"),
-        ("The run", "What you just saw · One run, beat by beat · The application · Proposed actions · The agent remembers"),
+        ("The run", "What you just saw · The application · Proposed actions · The agent remembers"),
         ("The proof", "Why Codex · Field notes"),
     ]
     for i, (t, b) in enumerate(groups):
@@ -745,22 +770,36 @@ def slide_what_you_saw(prs, blank):
         ["Every claim with an id", "a brief is accepted only when its sources exist", "the grounding gate"],
     ], col_w=[4.0, 4.6, 3.3], size=12)
     text(s, 0.72, 5.3, 11.9, 1.0, [[("Also in the appendix: ", {"bold": True, "color": RED, "size": 13.5}),
-        ("the same run beat by beat, the screens in detail, the memory, and the gate that caught a real mistake.", {"color": INK, "size": 13.5})]], line=1.15)
+        ("the screens in detail, the memory, and the gate that caught a real mistake.", {"color": INK, "size": 13.5})]], line=1.15)
     notes(s, "One table for the question 'how does the demo map to the design': each row names what was on screen, what it shows, and the mechanism behind it.")
 
 
+def slide_sequence_diagram(prs, blank):
+    """one run, the figure alone"""
+    s = diagram(prs, blank, "figure5-sequence.png")
+    notes(s, "[4:00, 30 s] What just happened in the browser, beat by beat: the web app ran scripts/sandbox.sh; the gateway created the sandbox "
+             "with a placeholder key; the code and a login file went in; the agent planned with GPT-5.5, queried under row-level security, searched "
+             "with Gemini, returned the structured brief, and the gate checked every id; then the sandbox was deleted. Codex runs the same script. "
+             "The next slide explains the beats.")
+
+
 def slide_one_run(prs, blank):
-    """one run"""
+    """one run, explained"""
     s = prs.slides.add_slide(blank)
-    header(s, "The web app and Codex call the same script", "One run, beat by beat")
-    figure(s, "figure5-sequence.png", 0.72, 1.85, 7.25)
-    bullets(s, 8.3, 1.95, 4.35, 4.9, [
-        ("Create.", "Sandbox with the provider and the policy; the key stays in the gateway."),
-        ("Upload.", "Agent code and a 0600 login file, deleted as soon as it is read."),
-        ("Run.", "Plan, delegate, query, search, return the structured brief."),
-        ("Watch.", "Every hop is a NET:OPEN or HTTP:POST line with ALLOWED and the policy that allowed it."),
-    ], size=13.5)
-    notes(s, "OpenShell 0.1.2 note: the first settings poll reloads policy about ten seconds in; the script waits for it.")
+    header(s, "The web app and Codex call the same script", "One run, explained")
+    steps(s, 0.72, 1.9, 11.9, 3.0, [
+        ("Create", "scripts/sandbox.sh asks the gateway for a sandbox with the provider and the policy. The gateway keeps the key; the sandbox gets a placeholder.", GREEN),
+        ("Upload", "The agent code and a 0600 login file go in; the file is deleted as soon as it is read. The script waits for the first policy reload.", TEAL),
+        ("Run", "python -m agent.run: GPT-5.5 plans, the chart analyst queries under row-level security, the two researchers search in parallel with Gemini.", VIOLET),
+        ("Return and gate", "A structured PreVisitBrief comes back; the gate looks up every cited id in the database, as the patient's own user, before accepting it.", RED),
+        ("Deliver and delete", "Events and the brief on stdout, the console on stderr, back to the web app as they happen; then the sandbox is deleted.", OCHRE),
+    ], gap=0.22, title_size=14, body_size=11.5)
+    text(s, 0.72, 5.3, 11.9, 1.2, [[("Every network hop is in the console. ", {"bold": True, "color": INK, "size": 13.5}),
+        ("Each one appears as NET:OPEN or HTTP:POST with ALLOWED and the policy that allowed it, written by the gateway, not by the agent. "
+         "The same script runs from the web app, from Codex and from a terminal, so every transcript in evidence/ was produced this way.", {"color": BODY, "size": 13})]], line=1.15)
+    repo(s, "scripts/sandbox.sh · agent/run.py · sandbox/policy.template.yaml · ui/server.py")
+    notes(s, "[4:30, 30 s] Five beats, then on to what runs inside: the Deep Agent itself. "
+             "OpenShell 0.1.2 note: the first settings poll reloads the policy about ten seconds in; the script waits for it.")
 
 
 def slide_application(prs, blank):
@@ -835,7 +874,7 @@ def slide_results(prs, blank):
     card(s, 0.72, 4.6, 3.86, 1.75, "Sandbox boundary", "safety_probe.sh: 7 of 7. Key is a placeholder; only GenAI and the database are reachable; 0 denied during runs.", accent=GREEN)
     card(s, 4.84, 4.6, 3.86, 1.75, "Database guarantees", "verify.py --rls-only: 25 of 25. One patient per user, proposals only for that patient, medication changes only from medication-safety and only approved by the doctor.", accent=RED)
     card(s, 8.96, 4.6, 3.66, 1.75, "Grounding", "Every cited id resolves in the database as the patient's own user, checked twice: in the sandbox and afterwards.", accent=TEAL)
-    notes(s, "[12:30, 1 min] All numbers come from evidence/run-*.jsonl and the probe and verify transcripts.")
+    notes(s, "[12:30, 45 s] All numbers come from evidence/run-*.jsonl and the probe and verify transcripts.")
 
 
 def slide_codex(prs, blank):
@@ -900,18 +939,20 @@ def slide_conclusion(prs, blank):
         text(s, x + 0.22, 4.05, 3.42, 2.0, [[(t, {"bold": True, "size": 16, "color": WHITE})], [(b, {"size": 12.5, "color": RGBColor(0xD8, 0xE6, 0xEA)})]], line=1.15)
     text(s, 0.72, 6.6, 11.9, 0.5, "Every claim on these slides has a transcript in the repository's evidence/ folder.", size=15, color=YELLOW, bold=True)
     text(s, 0.72, 7.08, 11.9, 0.3, FOOTER, size=8, color=RGBColor(0xC8, 0xD6, 0xDB))
-    notes(s, "[13:30, 30 s; a minute left for questions] Close on the method: structural safety plus a grounding gate, reproducible from a spec.")
+    notes(s, "[13:15, 30 s; a minute and a quarter left for questions] Close on the method: structural safety plus a grounding gate, reproducible from a spec.")
 
 
-# The talk, in order: thirteen slides for fifteen minutes. The concept, the
-# whole system in one picture, the process it copies; then the live run
-# starts and the slides explain what is running until it is shown.
-CORE = [slide_cover, slide_what_is_a_deep_agent, slide_architecture, slide_process_table, slide_demo_start, slide_deep_agent,
-        slide_data_layer, slide_sql_safely, slide_policy_in_action, slide_four_layers, slide_demo_back, slide_results, slide_conclusion]
+# The talk, in order: sixteen slides for fifteen minutes. The concept; the
+# architecture, first the figure alone and then explained; the process it
+# copies; the live run starts; one run beat by beat, figure then explanation;
+# then what is running, until the browser comes back.
+CORE = [slide_cover, slide_what_is_a_deep_agent, slide_architecture_diagram, slide_architecture, slide_process_table, slide_demo_start,
+        slide_sequence_diagram, slide_one_run, slide_deep_agent, slide_data_layer, slide_sql_safely, slide_policy_in_action, slide_four_layers,
+        slide_demo_back, slide_results, slide_conclusion]
 # Backup for questions, behind the divider, in the order the divider lists them.
 APPENDIX = [slide_appendix_divider, slide_why_enterprise, slide_reverse_engineer, slide_scenario, slide_build_code,
             slide_tools_table, slide_brief_to_action, slide_escalation_live, slide_why_openshell, slide_grounding_gate, slide_what_you_saw,
-            slide_one_run, slide_application, slide_actions_screen, slide_memory, slide_codex, slide_field_notes]
+            slide_application, slide_actions_screen, slide_memory, slide_codex, slide_field_notes]
 
 
 def build(template: Path, out: Path) -> None:
