@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import oracledb  # noqa: E402
-from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi import FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.responses import FileResponse, Response, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
@@ -368,7 +368,7 @@ def _load_runs() -> None:
         key = str(start.get("patient", ""))[-1:]
         if key not in PATIENTS:
             continue
-        brief = next((e.get("markdown") for e in events if e.get("type") == "brief"), None)
+        brief = next((e.get("markdown") for e in reversed(events) if e.get("type") == "brief"), None)
         status_item = next((x for x in reversed(lines) if x.get("channel") == "status"), None)
         if status_item is not None:
             status = str(status_item["status"])
@@ -461,16 +461,29 @@ async def list_runs() -> list[dict]:
     return [r.summary() for r in sorted(RUNS.values(), key=lambda r: r.started, reverse=True)]
 
 
+def _resume_from(last_event_id: str | None, total: int) -> int:
+    """How many lines the browser already has. Each event carries its position
+    as its id; after a dropped connection the browser sends the last one back
+    as Last-Event-ID and the stream continues from the next line instead of
+    replaying the run from the start into a view that already shows it."""
+    try:
+        return min(max(int(last_event_id or 0), 0), total)
+    except ValueError:
+        return 0
+
+
 @app.get("/api/runs/{run_id}/stream")
-async def stream(run_id: str):
+async def stream(run_id: str, request: Request):
     run = RUNS.get(run_id) or _missing()
+    sent = _resume_from(request.headers.get("last-event-id"), len(run.lines))
 
     async def events():
-        sent = 0
+        nonlocal sent
+        yield "retry: 1000\n\n"  # a dropped connection is retried after a second
         while True:
             while sent < len(run.lines):
-                yield f"data: {json.dumps(run.lines[sent], default=str)}\n\n"
                 sent += 1
+                yield f"id: {sent}\ndata: {json.dumps(run.lines[sent - 1], default=str)}\n\n"
             if run.done.is_set() and sent >= len(run.lines):
                 yield "event: end\ndata: {}\n\n"
                 return

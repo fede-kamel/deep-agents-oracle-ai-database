@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { emptyRun, getJSON, reduce, startRun, type Patient, type RunView, type Safety, type StreamItem } from "./api";
 import { ActionsPage } from "./components/ActionsPage";
 import { AgentsPage } from "./components/AgentsPage";
@@ -9,14 +9,16 @@ import { MemoryPage } from "./components/MemoryPage";
 import { PatientPage } from "./components/PatientPage";
 import { SafetySheet } from "./components/SafetyPanel";
 import { fmtSeconds } from "./hooks";
+import { lazyPage, prefetch } from "./lazy";
 
-// react-markdown is the heaviest dependency; it loads with the first brief.
-const BriefPage = lazy(() => import("./components/BriefPage"));
+// react-markdown is the heaviest dependency; it is split off, fetched right
+// after the first paint, and reloads the page once if a redeploy removed it.
+const BriefPage = lazyPage(() => import("./components/BriefPage"));
 
 type RunSummary = { id: string; patient: string; status: string };
 
-/** A page that fails to render (for example a chunk that no longer exists
- * after a redeploy) shows a way back instead of blanking the application. */
+/** A page that fails to render shows a way back instead of blanking the
+ * application; the other tabs keep working (the boundary is keyed by tab). */
 class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
@@ -49,9 +51,20 @@ export default function App() {
   const [decisions, setDecisions] = useState(0); // bumps after each decision: counts and memory change
   const source = useRef<EventSource | null>(null);
   const advanced = useRef<string | undefined>(undefined); // the run whose brief already moved the view forward
+  const toastTimer = useRef<number | undefined>(undefined);
   const running = view.status === "starting" || view.status === "running";
   // The run on screen belongs to its own patient, whoever is selected now.
   const runPatient = patients.find((p) => p.key === view.patient) ?? selected;
+
+  const notify = useCallback((text: string) => {
+    setToast(text);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(undefined), 7000);
+  }, []);
+
+  // Every lazily loaded page is fetched up front, so a redeploy during a talk
+  // never leaves a tab without its code.
+  useEffect(() => prefetch([() => import("./components/BriefPage"), () => import("./components/Markdown")]), []);
 
   useEffect(() => {
     getJSON<Patient[]>("/api/patients").then((ps) => {
@@ -73,6 +86,16 @@ export default function App() {
     source.current = es;
     es.onmessage = (m) => setView((v) => reduce(v, JSON.parse(m.data) as StreamItem));
     es.addEventListener("end", () => es.close());
+    // A dropped connection is retried by the browser, which sends the last event
+    // id it saw; the server continues from there, so nothing shows twice. A
+    // source the browser gave up on means the server refused the run: it is
+    // gone, reset from elsewhere.
+    es.onerror = () => {
+      if (es.readyState !== EventSource.CLOSED) return;
+      setView((v) => v.id === id && (v.status === "running" || v.status === "starting")
+        ? { ...v, status: "failed", error: "This run is no longer on the server (the demo was reset elsewhere). Pick the patient again." }
+        : v);
+    };
   }, []);
 
   const resetDemo = useCallback(async () => {
@@ -89,15 +112,14 @@ export default function App() {
       setMemory("");
       setActionCounts({ pending: 0, decided: 0 });
       setEpoch((e) => e + 1);
-      setToast(`Demo reset${body["runs stopped"] ? `, ${body["runs stopped"]} run stopped` : ""}: ${body["care actions"] ?? 0} actions, ${body["checkpoints"] ?? 0} checkpoints and all memory cleared.`);
+      notify(`Demo reset${body["runs stopped"] ? `, ${body["runs stopped"]} run stopped` : ""}: ${body["care actions"] ?? 0} actions, ${body["checkpoints"] ?? 0} checkpoints and all memory cleared.`);
     } catch (err) {
-      setToast(`Reset refused: ${String(err).replace(/^Error: /, "")}`);
+      notify(`Reset refused: ${String(err).replace(/^Error: /, "")}`);
     } finally {
       setResetting(false);
       setConfirmReset(false);
-      setTimeout(() => setToast(undefined), 7000);
     }
-  }, []);
+  }, [notify]);
 
   // Runs started elsewhere (another tab, the command line) are listed every few seconds.
   useEffect(() => {
@@ -214,28 +236,30 @@ export default function App() {
 
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className={clsx("mx-auto h-full px-5 py-4", tab === "agents" ? "max-w-[1680px]" : "max-w-[1240px]")}>
-          {tab === "patient" && selected && (
-            <PatientPage key={selected.key} patient={selected} question={question} setQuestion={setQuestion} onRun={run} running={running}
-              notice={notice} active={active && active.id !== view.id ? active : null} onWatch={watch} refresh={epoch}
-              memoryEntries={memoryEntries} onMemory={() => setTab("memory")} />
-          )}
-          {tab === "agents" && (
-            <AgentsPage view={view} running={running} question={view.meta?.question ?? question} patientName={runPatient?.display_name ?? ""}
-              onBrief={() => setTab("brief")} onPatient={() => setTab("patient")} />
-          )}
-          {tab === "brief" && (
-            <PageBoundary><Suspense fallback={null}>
-              <BriefPage view={view} patientName={runPatient?.display_name ?? ""} running={running} pending={actionCounts.pending}
-                onActions={() => setTab("actions")} onPatient={() => setTab("patient")} />
-            </Suspense></PageBoundary>
-          )}
-          {tab === "actions" && selected && (
-            <ActionsPage key={selected.key} patientKey={selected.key} refreshKey={`${view.status}:${proposals}`}
-              onDecided={() => setDecisions((d) => d + 1)} onLoaded={countActions} onMemory={() => setTab("memory")} />
-          )}
-          {tab === "memory" && selected && (
-            <MemoryPage patient={selected} memory={memory} entries={memoryEntries} checkpoints={view.checkpoints} onPatient={() => setTab("patient")} />
-          )}
+          <PageBoundary key={tab}>
+            {tab === "patient" && selected && (
+              <PatientPage key={selected.key} patient={selected} question={question} setQuestion={setQuestion} onRun={run} running={running}
+                notice={notice} active={active && active.id !== view.id ? active : null} onWatch={watch} refresh={epoch}
+                memoryEntries={memoryEntries} onMemory={() => setTab("memory")} />
+            )}
+            {tab === "agents" && (
+              <AgentsPage view={view} running={running} question={view.meta?.question ?? question} patientName={runPatient?.display_name ?? ""}
+                onBrief={() => setTab("brief")} onPatient={() => setTab("patient")} />
+            )}
+            {tab === "brief" && (
+              <Suspense fallback={null}>
+                <BriefPage view={view} patientName={runPatient?.display_name ?? ""} running={running} pending={actionCounts.pending}
+                  onActions={() => setTab("actions")} onPatient={() => setTab("patient")} notify={notify} />
+              </Suspense>
+            )}
+            {tab === "actions" && selected && (
+              <ActionsPage key={selected.key} patientKey={selected.key} refreshKey={`${view.status}:${proposals}`}
+                onDecided={() => setDecisions((d) => d + 1)} onLoaded={countActions} onMemory={() => setTab("memory")} />
+            )}
+            {tab === "memory" && selected && (
+              <MemoryPage patient={selected} memory={memory} entries={memoryEntries} checkpoints={view.checkpoints} onPatient={() => setTab("patient")} />
+            )}
+          </PageBoundary>
         </div>
       </main>
 

@@ -1,7 +1,8 @@
 import clsx from "clsx";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazyPage } from "../lazy";
 
-const Markdown = lazy(() => import("./Markdown"));
+const Markdown = lazyPage(() => import("./Markdown"));
 
 /** Markdown text in full, styled as prose; plain text until the renderer loads. */
 export function Prose({ children, className }: { children: string; className?: string }) {
