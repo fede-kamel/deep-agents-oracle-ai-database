@@ -1,0 +1,19 @@
+# The identity a coding agent uses to run codex/SPEC-OCI.md: manage only what
+# deploy/terraform creates, in the demo's compartment. A tenancy administrator
+# creates the group, adds the agent's API-key user to it, and adds a policy
+# with these statements (replace <group> and <compartment>).
+#
+# Network: the subnet, route table, security list and groups, and the load balancer.
+allow group <group> to manage virtual-network-family in compartment <compartment>
+allow group <group> to manage network-load-balancers in compartment <compartment>
+# The VM and its image, and SSH through the Bastion.
+allow group <group> to manage instance-family in compartment <compartment>
+allow group <group> to manage bastion-family in compartment <compartment>
+# The Vault, its key, and the secrets (vault-put.sh, an operator step, writes them).
+allow group <group> to manage vaults in compartment <compartment>
+allow group <group> to manage keys in compartment <compartment>
+allow group <group> to manage secret-family in compartment <compartment>
+# Terraform also creates a dynamic group (the VM) and a policy (the VM may read
+# its own vault). Identity resources need a tenancy-level grant, so keep these two
+# with the administrator: the administrator applies them once, and the agent's
+# plan then shows no changes for them. This file has not been tested yet.

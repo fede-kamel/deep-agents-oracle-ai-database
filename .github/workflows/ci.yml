@@ -1,0 +1,58 @@
+# Checks that need no cloud account, no database and no secret. The checks
+# that do (preflight, the sandbox probe, a brief, the end-to-end demo) run
+# from codex/SPEC.md on the operator's machine; their transcripts are in evidence/.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: lockfile resolves from the public registry only
+        run: "! grep -E '\"resolved\": \"https?://' package-lock.json | grep -v 'https://registry.npmjs.org/'"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -S warning scripts/*.sh scripts/operator/*.sh deploy/*.sh deploy/server/*.sh deploy/server/operator/*.sh
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate

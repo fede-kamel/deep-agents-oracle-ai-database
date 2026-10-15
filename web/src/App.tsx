@@ -17,6 +17,11 @@ const BriefPage = lazyPage(() => import("./components/BriefPage"));
 
 type RunSummary = { id: string; patient: string; status: string };
 
+// The server speaks on the event stream at least every 15 s while a run is
+// live. Silence this long means the connection stopped delivering, as Wi-Fi
+// does; the browser alone would wait a minute or more before noticing.
+const STALL_MS = 45_000;
+
 /** A page that fails to render shows a way back instead of blanking the
  * application; the other tabs keep working (the boundary is keyed by tab). */
 class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -52,6 +57,7 @@ export default function App() {
   const source = useRef<EventSource | null>(null);
   const advanced = useRef<string | undefined>(undefined); // the run whose brief already moved the view forward
   const toastTimer = useRef<number | undefined>(undefined);
+  const lastHeard = useRef(0); // when the event stream last delivered anything
   const running = view.status === "starting" || view.status === "running";
   // The run on screen belongs to its own patient, whoever is selected now.
   const runPatient = patients.find((p) => p.key === view.patient) ?? selected;
@@ -84,7 +90,11 @@ export default function App() {
     source.current?.close();
     const es = new EventSource(`/api/runs/${id}/stream`);
     source.current = es;
-    es.onmessage = (m) => setView((v) => reduce(v, JSON.parse(m.data) as StreamItem));
+    const heard = () => { lastHeard.current = Date.now(); };
+    heard();
+    es.onopen = heard;
+    es.addEventListener("ping", heard); // the server's heartbeat while a run is quiet
+    es.onmessage = (m) => { heard(); setView((v) => reduce(v, JSON.parse(m.data) as StreamItem)); };
     es.addEventListener("end", () => es.close());
     // A dropped connection is retried by the browser, which sends the last event
     // id it saw; the server continues from there, so nothing shows twice. A
@@ -97,6 +107,21 @@ export default function App() {
         : v);
     };
   }, []);
+
+  // A connection that goes silent is not dropped: the browser keeps waiting on
+  // it. After STALL_MS without a word the stream is reopened on a fresh
+  // connection and the run replayed into an empty view, which ends in the same
+  // state with nothing shown twice.
+  useEffect(() => {
+    if (!running || !view.id) return;
+    const id = view.id;
+    const t = setInterval(() => {
+      if (Date.now() - lastHeard.current < STALL_MS) return;
+      setView((v) => (v.id === id ? { ...emptyRun(), status: "running", patient: v.patient, id } : v));
+      listen(id);
+    }, 5000);
+    return () => clearInterval(t);
+  }, [running, view.id, listen]);
 
   const resetDemo = useCallback(async () => {
     setResetting(true);

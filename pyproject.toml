@@ -33,3 +33,10 @@ ignore = ["E731", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["agent", "common", "data", "db", "ui"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pyyaml>=6", "ruff>=0.13"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
