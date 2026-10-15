@@ -41,13 +41,13 @@ systemctl --user restart deepagents-web
 
 log "caddy for https://$HOST"
 # HTTP/1.1 only. The load balancer forwards TCP, so HTTP/3 (UDP) can never
-# arrive. With HTTP/2 every request shares one connection, so a connection
-# that silently stops delivering (Wi-Fi does this) freezes the whole page
-# until the browser notices, a minute later; with HTTP/1.1 a stuck connection
-# stalls only its own request and the next one opens a fresh connection.
-# Alt-Svc: clear makes browsers forget the HTTP/3 that earlier deployments
-# advertised. The access log goes to the journal. flush_interval -1 passes
-# the event stream through unbuffered.
+# arrive. HTTP/2 carries every request on one connection, so a connection
+# that silently stops delivering (Wi-Fi does this) froze the whole page until
+# the browser noticed, a minute later. Over HTTP/1.1 a request the page
+# abandons closes its own connection, and the page's timeouts and stream
+# watchdog recover on fresh ones. Alt-Svc: clear makes browsers forget the
+# HTTP/3 that earlier deployments advertised. The access log goes to the
+# journal. flush_interval -1 passes the event stream through unbuffered.
 sudo tee /etc/caddy/Caddyfile >/dev/null <<EOF
 {
 	servers {
