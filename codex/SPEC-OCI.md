@@ -76,17 +76,21 @@ Checkpoint: prints `https://<host>`. The other outputs are identifiers: use them
 
 ### 3.3 Secrets in the Vault (operator step)
 
-List the names only:
+Compare the names only, never the values. This prints one line per missing secret, and nothing when all are there:
 
 ```shell
-cd deploy/terraform && oci vault secret list --auth api_key --profile "$(sed -nE 's/^oci_profile *= *"(.*)"/\1/p' terraform.tfvars)" \
+names=$(cd deploy/terraform && oci vault secret list --auth api_key \
+  --profile "$(sed -nE 's/^oci_profile *= *"(.*)"/\1/p' terraform.tfvars)" \
   --compartment-id "$(sed -nE 's/^compartment_id *= *"(.*)"/\1/p' terraform.tfvars)" \
   --vault-id "$(terraform output -raw vault_id)" --lifecycle-state ACTIVE --all \
-  --query 'data[]."secret-name"' --raw-output </dev/null
+  --query 'data[]."secret-name"' 2>/dev/null </dev/null | jq -r '.[]')
+for n in deepagents-genai-key deepagents-login \
+         $(ls ~/.config/deepagents-oracle-health/secrets/ | sed 's/^/deepagents-db-/'); do
+  printf '%s\n' "$names" | grep -qx "$n" || echo "missing $n"
+done
 ```
 
-Checkpoint: the list holds `deepagents-genai-key`, `deepagents-login`, and one
-`deepagents-db-<FILE>` for every file in `~/.config/deepagents-oracle-health/secrets/`.
+Checkpoint: the loop prints nothing. Use this command as written; do not parse the listing another way.
 If any is missing, hand the operator `deploy/server/operator/vault-put.sh` to run in
 their own terminal, wait for `done`, and check again.
 
