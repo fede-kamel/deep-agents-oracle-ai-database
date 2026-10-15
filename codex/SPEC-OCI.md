@@ -124,13 +124,14 @@ Checkpoint: `PREFLIGHT OK`, `PROBE OK (7/7)`, `VERIFY OK (25/25)`.
 
 ```shell
 ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \
-  'cd deepagents && scripts/sandbox.sh run Y </dev/null 2>/dev/null | tail -c 20000' </dev/null \
-  | grep -o '"type": "verify"[^}]*"final": true' | tail -1
+  'cd deepagents && set -o pipefail && scripts/sandbox.sh run Y </dev/null 2>/dev/null \
+   | grep -E "\"type\": \"(verify|rejected|done)\""' </dev/null
 ```
 
-About 5 minutes. Checkpoint: the final verify event shows `"passed": true`.
-If the web application is running a brief, wait for it (`/api/runs` on the VM).
-Never approve or reject a care action.
+About 5 minutes. The command prints only the gate's verdicts and the totals, and
+exits with the run's own code. Checkpoint: exit 0, and the last `verify` line shows
+`"passed": true` with `"final": true`. If the web application is running a brief,
+wait for it (`/api/runs` on the VM). Never approve or reject a care action.
 
 ### 3.7 The web application and the public URL
 
