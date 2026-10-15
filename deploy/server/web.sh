@@ -29,7 +29,8 @@ RestartSec=5
 [Install]
 WantedBy=default.target
 EOF
-export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export XDG_RUNTIME_DIR
 systemctl --user daemon-reload
 systemctl --user enable deepagents-web >/dev/null 2>&1
 # A restart kills the run the server is driving. Wait for a run in progress.
