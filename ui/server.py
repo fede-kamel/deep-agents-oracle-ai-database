@@ -491,7 +491,9 @@ async def stream(run_id: str, request: Request):
                 try:
                     await asyncio.wait_for(run.changed.wait(), timeout=15)
                 except TimeoutError:
-                    yield ": keep-alive\n\n"
+                    # A named event, not a comment: the page can see it and tell
+                    # a quiet run from a connection that stopped delivering.
+                    yield "event: ping\ndata: {}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

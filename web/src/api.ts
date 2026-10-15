@@ -197,18 +197,33 @@ function laneIndex(lanes: Lane[], agent: string): number {
   return -1;
 }
 
+/** How long a request may wait. A connection that stopped delivering packets,
+ * as Wi-Fi does, otherwise keeps a request pending for minutes; aborting it
+ * closes that connection, and the next request opens a fresh one. */
+const REQUEST_TIMEOUT_MS = 30_000;
+const START_TIMEOUT_MS = 20_000;
+
 export async function getJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url);
+  const r = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
   return r.json();
 }
 
 export async function startRun(patient: string, question: string): Promise<{ id: string }> {
-  const r = await fetch("/api/runs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ patient, question }),
-  });
+  let r: Response;
+  try {
+    r = await fetch("/api/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patient, question }),
+      signal: AbortSignal.timeout(START_TIMEOUT_MS),
+    });
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    throw new Error(timedOut
+      ? `The server did not answer within ${START_TIMEOUT_MS / 1000} seconds; the connection may have gone stale. Try again.`
+      : `The request did not reach the server (${err instanceof Error ? err.message : String(err)}). Try again.`);
+  }
   if (!r.ok) throw new Error((await r.json()).detail ?? r.statusText);
   return r.json();
 }

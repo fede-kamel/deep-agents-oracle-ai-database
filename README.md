@@ -168,8 +168,11 @@ gateway's own network decisions, so a SQL query sits next to the
 `NET:OPEN … :1521` it caused and a model call next to its
 `HTTP:POST … /openai/v1/chat/completions`. Every area goes full screen.
 Runs are kept on disk, so a restart of the server changes nothing on screen;
-a dropped connection resumes where it left off; and after a redeploy an open
-tab reloads itself once instead of failing. The brief downloads as Word or
+a dropped connection resumes where it left off; a connection that goes silent
+(the server speaks at least every 15 s while a run is live) is replaced after
+45 s and the run replayed, nothing shown twice; a start request the network
+swallows becomes a notice after 20 s; and after a redeploy an open tab
+reloads itself once instead of failing. The brief downloads as Word or
 Markdown, and each download says what it saved.
 
 ## Check every claim yourself

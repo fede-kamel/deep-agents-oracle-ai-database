@@ -62,6 +62,11 @@ terraform -chdir=deploy/terraform destroy                  # remove it all
   retries the rare refusal left.
 - **Front end.** `npm ci` crashes on the VM, so `provision.sh` builds `web/dist`
   on the laptop and copies it.
-- **No HTTP/3.** The load balancer forwards TCP, so Caddy serves HTTP/1.1 and
-  HTTP/2 only. Advertising HTTP/3 would send browsers to a UDP port nothing
-  answers before they fall back.
+- **HTTP/1.1 only.** The load balancer forwards TCP, so HTTP/3 (UDP) can never
+  arrive. HTTP/2 is off as well: it carries every request on one connection,
+  and a connection that silently stops delivering (venue Wi-Fi did this during
+  a rehearsal) froze the whole page until the browser noticed, about a minute
+  later. With HTTP/1.1 a stuck connection stalls only its own request; the
+  next request opens a fresh one. Caddy also sends `Alt-Svc: clear`, so
+  browsers forget the HTTP/3 that earlier deployments advertised, and logs
+  every request to the journal (`sudo journalctl -u caddy`).
