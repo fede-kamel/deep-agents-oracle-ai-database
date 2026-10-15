@@ -315,6 +315,17 @@ doctor, and `WEBAPP OK (7/7)`
 it on the final code and passed every check, the Y brief on its first draft
 ([report](evidence/codex/codex-run5-report-2026-10-05.md)).
 
+Codex can also run on OCI Generative AI's OpenAI models instead of an OpenAI
+account. [`codex/oci-signing-bridge.py`](codex/oci-signing-bridge.py) listens on
+127.0.0.1 and signs each request with an OCI CLI API-key profile; Codex sees only
+a local URL:
+
+```shell
+uv run --with oci --with requests python codex/oci-signing-bridge.py <oci-profile> 8899 &
+codex -c 'model_providers.ocigenai={name="OCI Generative AI", base_url="http://127.0.0.1:8899/openai/v1", wire_api="responses", requires_openai_auth=false}' \
+  -c model_provider=ocigenai -m openai.gpt-5.5 "$(cat codex/PROMPT.md)"
+```
+
 Codex runs the preflight, hands you the two steps that involve a secret (the
 database ADMIN password and the OCI Generative AI key, both typed with
 `read -rs` in your own terminal), then migrates, seeds, embeds, probes the
@@ -357,7 +368,16 @@ deploy/install.sh        # Terraform, the Vault, the VM; ends with the URL
 
 See [`deploy/README.md`](deploy/README.md). A coding agent can run and verify the
 deployment from [`codex/SPEC-OCI.md`](codex/SPEC-OCI.md), with the Vault step left
-to you and any Terraform change applied only on your word. The same brief that took 554 s on a
+to you and any Terraform change applied only on your word. Codex ran it against
+the live deployment on 2026-10-15, on `openai.gpt-5.5` through the signing bridge:
+plan with no changes, the Vault secrets present, provisioning, `PREFLIGHT OK`,
+`PROBE OK (7/7)`, `VERIFY OK (25/25)` on the VM, a Patient Y brief accepted by the
+gate, and the public URL over HTTP/1.1
+([report](evidence/codex/codex-oci-run5-report-2026-10-15.md),
+[log](evidence/codex/codex-oci-run5-2026-10-15.log)). The four runs before it each
+stopped on a gap in the specification, which was then fixed: an `OCI_CLI_AUTH`
+in the environment, a Vault listing Codex parsed itself, a headless run that ended
+after reading, and a brief check that cut off the gate's verdict. The same brief that took 554 s on a
 laptop took 295 s on the VM, with no sandbox network refusals.
 
 ## Field notes
