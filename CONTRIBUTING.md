@@ -34,6 +34,9 @@ Say in the pull request which of these you ran, with the last lines of each.
 
 ## Conventions
 
+- `web/package-lock.json` resolves from `https://registry.npmjs.org/` only; CI refuses any other
+  registry. If your npm uses a private mirror, rewrite the `resolved` URLs before committing.
+
 - Schema changes are new Alembic migrations with a working `downgrade()`.
 - Scripts run from the repository root, in the foreground, with `</dev/null`.
 - Keep `codex/SPEC.md` in step with the scripts: where they differ, the script wins and the spec is the bug.

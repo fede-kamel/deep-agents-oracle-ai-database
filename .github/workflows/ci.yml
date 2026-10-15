@@ -33,6 +33,8 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - name: lockfile resolves from the public registry only
+        run: "! grep -E '\"resolved\": \"https?://' package-lock.json | grep -v 'https://registry.npmjs.org/'"
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run build
