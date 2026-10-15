@@ -28,7 +28,7 @@ Out of scope: creating the VCN, its gateways, or the database; destroying anythi
 |---|---|---|
 | `deploy/terraform/terraform.tfvars` | the operator, from the example | the file exists; **never print it**: it holds OCIDs |
 | `~/.config/deepagents-oracle-health/config.json` and the database secrets | the laptop build, `SPEC.md` section 4 | the files exist; never read the secrets |
-| An OCI CLI profile (`oci_profile` in the tfvars) | the operator | the CLI uses it; the agent never opens `~/.oci` |
+| An OCI CLI profile (`oci_profile` in the tfvars), API-key auth | the operator | the CLI uses it with `--auth api_key`, as the deploy scripts do (an `OCI_CLI_AUTH` in the environment would otherwise win); the agent never opens `~/.oci` |
 | The web login and the GenAI key in the Vault | the operator, with `deploy/server/operator/vault-put.sh` | section 3.3 |
 
 The identity rule. The profile's key sits on disk, so a coding agent that runs
@@ -45,7 +45,7 @@ key only for a supervised run, and say so in the report.
 | Terraform | `terraform version` | prints a version |
 | OCI CLI | `oci --version` | prints a version |
 | jq, ssh | `jq --version; ssh -V` | print versions |
-| the profile works | `oci iam region list --profile <oci_profile> --query 'length(data)'` | prints a number |
+| the profile works | `oci iam region list --profile <oci_profile> --auth api_key --query 'length(data)'` | prints a number |
 | the inputs exist | `test -f deploy/terraform/terraform.tfvars && test -f ~/.config/deepagents-oracle-health/config.json` | exit 0 |
 
 ## 3. Steps
@@ -79,7 +79,7 @@ Checkpoint: prints `https://<host>`. The other outputs are identifiers: use them
 List the names only:
 
 ```shell
-cd deploy/terraform && oci vault secret list --profile "$(sed -nE 's/^oci_profile *= *"(.*)"/\1/p' terraform.tfvars)" \
+cd deploy/terraform && oci vault secret list --auth api_key --profile "$(sed -nE 's/^oci_profile *= *"(.*)"/\1/p' terraform.tfvars)" \
   --compartment-id "$(sed -nE 's/^compartment_id *= *"(.*)"/\1/p' terraform.tfvars)" \
   --vault-id "$(terraform output -raw vault_id)" --lifecycle-state ACTIVE --all \
   --query 'data[]."secret-name"' --raw-output </dev/null
