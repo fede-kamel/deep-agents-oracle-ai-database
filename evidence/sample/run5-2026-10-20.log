@@ -1,0 +1,39 @@
+$ openshell sandbox create --name sample-112045 --from deep-agent-sample:0.1 --provider deepagents-genai --policy policy.yaml
+
+Created sandbox: sample-112045
+
+  [0.0s] Requesting compute...
+[0.0s] Sandbox allocated
+[0.0s] Pulling image deep-agent-sample:0.1
+[0.0s] Image already present
+[0.1s] Starting sandbox Container created
+Uploading <tmp>/app -> sandbox:/sandbox
+✓ Upload complete
+Uploading <tmp>/secrets -> sandbox:/sandbox
+✓ Upload complete
+$ openshell sandbox exec --name sample-112045 -- python3.12 agent.py
+## Snapshot
+
+- SYN-A has worsening kidney function, with eGFR now 47 mL/min/1.73m² and kidney-relevant medication exposure including frequent ibuprofen use. [LAB-A-003] [MED-A-003]
+- Diabetes data are mixed, with glucose 62 mg/dL and HbA1c 8.4% on 2026-08-20. [LAB-A-004] [LAB-A-005]
+
+## What changed
+
+- eGFR declined from 68 on 2025-03-10 to 55 on 2025-11-02 to 47 on 2026-08-20. [LAB-A-001] [LAB-A-002] [LAB-A-003]
+
+## Medication review
+
+- Ibuprofen 400 mg as needed is being used most days and deserves review because eGFR has declined to 47. [MED-A-003] [LAB-A-003]
+- Medication-safety proposed stopping ibuprofen and avoiding NSAIDs given the eGFR decline and frequent ibuprofen use. [LAB-A-001] [LAB-A-002] [LAB-A-003] [MED-A-003]
+- Metformin 1000 mg twice daily deserves renal-dose review because eGFR is 47. [MED-A-001] [LAB-A-003]
+- Glipizide 10 mg twice daily deserves safety review because glucose was 62 mg/dL despite HbA1c 8.4%. [MED-A-002] [LAB-A-004] [LAB-A-005]
+
+## Proposed actions
+
+- Obtain repeat kidney-function labs and urine kidney-damage assessment before the visit. [LAB-A-001] [LAB-A-002] [LAB-A-003]
+- Coordinate the visit around CKD and diabetes medication-safety review. [LAB-A-003] [MED-A-003]
+- Review hypoglycemia risk before the visit because glucose was 62 mg/dL while the patient is taking glipizide and metformin. [LAB-A-004] [MED-A-002] [MED-A-001]
+
+gate: 8 cited ids, 0 missing
+BRIEF OK
+exit=0 seconds=137
