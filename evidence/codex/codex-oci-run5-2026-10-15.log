@@ -987,7 +987,7 @@ DA_AGENT_X
 == GenAI key -> gateway
 provider deepagents-genai ready
 == web login -> Caddy
-login set for fkamelha
+login set for <user>
 == secrets done
 == provisioned: https://<host>.sslip.io
 
