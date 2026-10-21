@@ -1,0 +1,11 @@
+**SPEC-OCI Section 7 Report**
+- **Prerequisites:** Terraform `1.5.7`; OCI CLI `3.84.0`; `jq` `1.8.1`; SSH present; OCI profile check returned a numeric region count; required input files are present.
+- **Terraform plan:** `No changes. Your infrastructure matches the configuration.`
+- **Vault secret-name check:** Passed. No missing secret names were printed.
+- **Provisioning:** Passed. `provisioned: https://<host>.sslip.io`; duration `87` seconds.
+- **VM checks:** Passed. `PREFLIGHT OK`; `PROBE OK (7/7)`; `VERIFY OK (25/25)`.
+- **Brief check:** The first patient `Y` run completed with `done`: `284.0` seconds, `62` tool calls, `11` SQL calls, `23` searches, `7` delegations, `5` actions. The SPEC `tail -c 20000` window clipped the final verify event because the brief JSON was large.
+- **Brief retry:** I ran an event-only retry to capture verifier fields safely. It ended with final verify `passed=false`, `citations=190`, `problem_count=1`, then `done`: `1162.3` seconds, `210` tool calls, `33` SQL calls, `60` searches, `32` delegations, `21` actions.
+- **Web checks:** VM `/api/patients` returned `200`; public URL returned `HTTP/1.1 401 Unauthorized` and `Alt-Svc: clear`.
+- **Section 4 match:** No SPEC-OCI section 4 symptom matched the failed final verify retry. Per your stop rule, I stopped here.
+- **Section 5:** Before the failed retry, `openshell sandbox list` showed no `brief-*` or `probe-*` sandbox, and `git status` was clean. No OCID, secret value, or key was printed in this report.

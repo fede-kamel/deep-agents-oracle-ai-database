@@ -352,15 +352,15 @@ def _load_runs() -> None:
         stream_file, events_file, console_file = (run_dir / n for n in ("stream.jsonl", "events.jsonl", "console.log"))
         lines: list[dict] = []
         if stream_file.is_file():
-            lines = [json.loads(l) for l in stream_file.read_text().splitlines() if l.strip()]
+            lines = [json.loads(line) for line in stream_file.read_text().splitlines() if line.strip()]
         elif events_file.is_file():
-            for l in events_file.read_text().splitlines():
+            for line in events_file.read_text().splitlines():
                 try:
-                    lines.append({"channel": "agent", "event": json.loads(l)})
+                    lines.append({"channel": "agent", "event": json.loads(line)})
                 except ValueError:
                     continue
             if console_file.is_file():
-                lines.extend({"channel": "console", "line": l} for l in console_file.read_text().splitlines())
+                lines.extend({"channel": "console", "line": text} for text in console_file.read_text().splitlines())
         events = [x["event"] for x in lines if x.get("channel") == "agent"]
         start = next((e for e in events if e.get("type") == "start"), None)
         if start is None:

@@ -60,8 +60,9 @@ terraform -chdir=deploy/terraform destroy                  # remove it all
   answers with a few seconds left, so reconnects hit an expired mapping.
   Unbound keeps answers for 5 minutes and refreshes them early; `agent/db.py`
   retries the rare refusal left.
-- **Front end.** `npm ci` crashes on the VM, so `provision.sh` builds `web/dist`
-  on the laptop and copies it.
+- **Front end.** `provision.sh` builds `web/dist` on the laptop and copies it.
+  `npm ci` used to fail on the VM because the lockfile pointed at a private npm
+  mirror; it now resolves from the public registry, as CI checks.
 - **HTTP/1.1 only.** The load balancer forwards TCP, so HTTP/3 (UDP) can never
   arrive. HTTP/2 is off as well. It carries every request on one connection,
   and when that connection silently stopped delivering (venue Wi-Fi, during a

@@ -42,7 +42,8 @@ EOF
 
 log "gateway service"
 sudo loginctl enable-linger "$USER"
-export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export XDG_RUNTIME_DIR
 systemctl --user daemon-reload
 systemctl --user enable openshell-gateway >/dev/null 2>&1
 systemctl --user restart openshell-gateway

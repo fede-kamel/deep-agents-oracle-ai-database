@@ -14,6 +14,7 @@ never appear; the database host is Oracle's public regional endpoint.
 | `rls-verify-2026-10-05.log` | `scripts/verify.py --rls-only`: 25 checks on row-level security, write refusal, the care-action workflow, policies CP-02 and CP-03, and the synthetic-only constraints |
 | `safety-probe-2026-10-05.log` | `scripts/safety_probe.sh`: 7 probes from inside a sandbox, with the gateway's decisions |
 | `codex/codex-run1..5-*` | five recorded Codex runs of `codex/SPEC.md`: one stopped on the database ACL, two passes on the first version, two on the current code |
+| `codex/codex-oci-run*-2026-10-15*` | Codex running `codex/SPEC-OCI.md` against the OCI deployment on OCI Generative AI: run 1 stopped on the CLI auth, runs 2 and 4 found two more gaps in the specification, run 5 passed every checkpoint |
 
 Runs: OpenShell 0.1.2 (Docker driver), langchain-oci 0.3.2, deepagents 0.7.21,
 python-oracledb 3.4.2, Oracle AI Database 26ai (Always Free),

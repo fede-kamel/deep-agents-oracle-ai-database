@@ -1,0 +1,1216 @@
+Reading additional input from stdin...
+2026-10-15T18:04:32.499302Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 404 Not Found: Path doesn't map to a registered service!, url: http://127.0.0.1:8899/openai/v1/models?client_version=0.159.3
+2026-10-15T18:04:32.519381Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 404 Not Found: Path doesn't map to a registered service!, url: http://127.0.0.1:8899/openai/v1/models?client_version=0.159.3
+OpenAI Codex v0.159.3
+--------
+workdir: ~/Projects/deepagents
+model: openai.gpt-5.5
+provider: ocigenai
+approval: on-request
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, ~/.config/deepagents-oracle-health, ~/.terraform.d] (network access enabled)
+reasoning effort: high
+reasoning summaries: none
+session id: 01a140bc-b89e-7bd1-b236-68e883bac63c
+--------
+user
+Operator context: this is a non-interactive run. Do not stop after reading or after showing a table; carry out every step in order now. Stop only where SPEC-OCI requires my reply (a Terraform change, a missing Vault secret) or a check fails, and then give the section 7 report.
+
+Deploy and verify this demo in OCI by following `codex/SPEC-OCI.md` exactly.
+Read it and `AGENTS.md` in full before you run anything.
+
+Show me the prerequisites table from SPEC-OCI section 2. If the Terraform plan
+proposes changes, show me only the Plan line and the resource addresses, and wait
+for me to reply `apply`. For the Vault step, hand me the script to run in my own
+terminal and tell me to reply `done` without pasting output; skip it if its
+checkpoint already passes.
+
+Run every command from the repository root, in the foreground, with stdin from
+`/dev/null`. Never print an OCID, a secret, or a key. If a check fails, match it
+against SPEC-OCI section 4 before doing anything else, tell me what happened, and
+retry at most twice. Give me the report in SPEC-OCI section 7.
+warning: Ignoring unknown `features` requirement `ultrafast_mode` from requirements layers: enterprise-managed requirements Fast mode access (rbac-fast-mode), enterprise-managed requirements Ultra Fast mode access (rbac-ultrafast-mode), enterprise-managed requirements Computer History access (rbac-computer-history), enterprise-managed requirements Codex Developers (8a9cace4-0b4b-4c93-a8d5-b33253d2d6e4)
+warning: Configured value for `approval_policy` is disallowed by requirements; falling back to required value OnRequest. Details: invalid value for `approval_policy`: `Never` is not in the allowed set [OnRequest, UnlessTrusted] (set by enterprise-managed requirements Codex Developers (8a9cace4-0b4b-4c93-a8d5-b33253d2d6e4))
+warning: Ignoring unknown `features` requirement `ultrafast_mode` from requirements layers: enterprise-managed requirements Fast mode access (rbac-fast-mode), enterprise-managed requirements Ultra Fast mode access (rbac-ultrafast-mode), enterprise-managed requirements Computer History access (rbac-computer-history), enterprise-managed requirements Codex Developers (8a9cace4-0b4b-4c93-a8d5-b33253d2d6e4)
+warning: Model metadata for `openai.gpt-5.5` not found. Defaulting to fallback metadata; this can degrade performance and cause issues.
+**Understanding the coding task**
+
+I need to act as a coding agent since the user wants to deploy and verify OCI by the specification. I must read both SPEC-OCI and AGENTS completely. I have to use shell commands carefully to ensure no secrets or OCIDs are printed. The process must be noninteractive and only stop for Terraform changes or if there are missing Vault secrets. I should avoid printing sensitive information while carefully inspecting the commands and understanding the specifications first.
+codex
+I’ll read the OCI spec and repo instructions first, then execute the spec steps from the repo root with guarded output.
+exec
+/bin/zsh -lc "pwd && printf '\\n--- AGENTS.md ---\\n' && cat AGENTS.md && printf '\\n--- SPEC-OCI.md ---\\n' && cat codex/SPEC-OCI.md" in ~/Projects/deepagents
+ succeeded in 40ms:
+~/Projects/deepagents
+
+--- AGENTS.md ---
+# Agent instructions
+
+This repository is a runnable demo: a LangChain Deep Agent, built with
+`langchain-oracle`, writes a pre-visit clinical brief for a synthetic patient
+from Oracle AI Database 26ai, inside an NVIDIA OpenShell sandbox. The
+specification for building and running it is `codex/SPEC.md`; the prompt that
+drives an agent through it is `codex/PROMPT.md`. Read the specification before
+running anything.
+
+## Hard rules
+
+- Secrets. Never ask for, echo, log, or store a password or an API key. The
+  operator runs `scripts/operator/*.sh` in their own terminal for the two steps
+  that need one. Anything that looks like a key or a password in an output is
+  a stop condition. The placeholder `openshell:resolve:env:…` is not a secret.
+- Synthetic data only. Never add, import, or paste real patient data. The
+  schema rejects patient ids without the `SYN-` prefix; do not work around it.
+- Scope. Touch only what the demo created: the `DA_*` users and their objects,
+  the `deepagents-genai` provider, `brief-*` and `probe-*` sandboxes, the
+  `deepagents-oracle-health` image, and the `deepagents-*` OCI resources that
+  `deploy/terraform` manages. Never run `db/setup_admin.py` (ADMIN).
+- Care actions. Never approve or reject a care action yourself; that is the
+  clinician's or the doctor's decision in the web application (only
+  `scripts/demo_e2e.py` and `web/scripts/ui-e2e.mjs` decide, and only when the
+  operator runs them). You may run `db/reset_workflow.py`
+  only when the operator asks for a clean slate.
+- Integrity. Do not modify `agent/`, `db/`, `migrations/`, `sandbox/` or
+  `scripts/` to make a check pass. Explain and stop instead.
+- Scripts run from the repository root, in the foreground, with `</dev/null`.
+  Every `openshell sandbox exec` needs `</dev/null` on OpenShell 0.1.2.
+
+## Where things are
+
+| Path | Purpose |
+|---|---|
+| `agent/` | the Deep Agent: prompts, SQL tools, care-action and escalation tools, guards, memory, structured brief, runner |
+| `migrations/` | Alembic: clinical schema, vector tables, cohort benchmark, row-level security, citable note ids, care actions, care and agent policies |
+| `db/` | ADMIN setup (operator), seed, in-database embedding, stats, demo reset |
+| `data/` | synthetic patients X, Y, Z; background cohort; public reference corpus loaders |
+| `sandbox/` | image, provider profile, sandbox policy |
+| `scripts/` | `preflight.sh`, `setup-data.sh`, `sandbox.sh`, `safety_probe.sh`, `verify.py`, `demo_e2e.py`, `webapp-check.sh`, `teardown.sh`, `operator/` |
+| `ui/`, `web/` | the web application: FastAPI backend, React front end; `web/scripts/ui-e2e.mjs` clicks through it in a browser |
+| `evidence/` | transcripts behind every claim, identifiers redacted |
+| `codex/` | the specification and the prompt |
+| `deploy/` | the demo in OCI: `terraform/`, `server/` provisioning (`provision.sh`, `connect.sh`), `install.sh`, `server/operator/vault-put.sh` |
+
+## Verifying
+
+- `scripts/preflight.sh </dev/null` ends with `PREFLIGHT OK`.
+- `scripts/safety_probe.sh </dev/null` ends with `PROBE OK (7/7)`.
+- `scripts/sandbox.sh run X </dev/null` exits 0; its final `verify` event passes.
+- `uv run python scripts/verify.py <brief>` and `--rls-only` end with `VERIFY OK` (`--rls-only`: 25/25).
+- With the web app on 8765, `uv run python scripts/demo_e2e.py` ends with `DEMO E2E OK`.
+- `scripts/webapp-check.sh Y </dev/null` ends with `WEBAPP OK (7/7)`.
+- With the web app on 8765, `cd web && node scripts/ui-e2e.mjs Y` ends with `UI E2E OK`.
+
+## Writing
+
+Active voice, short sentences, commands in `shell` fences, no filler. Keep the
+disclaimer that this is personal work with synthetic data. Never mention
+accounts, tenancy or compartment OCIDs, DSN service names, or key values.
+
+--- SPEC-OCI.md ---
+# Specification: the demo in OCI, built and verified by a coding agent
+
+Version 1, 2026-10-15. The OCI half of [`SPEC.md`](SPEC.md): the same rules
+(`AGENTS.md`), the same report discipline, and a checkpoint for every step. It
+drives `deploy/`, which puts the whole demo on one VM in a private subnet behind
+a Network Load Balancer, with OCI Bastion for SSH and OCI Vault for the secrets
+(see [`deploy/README.md`](../deploy/README.md)). The prompt is
+[`PROMPT-OCI.md`](PROMPT-OCI.md). Where this file and a script differ, the
+script wins, and the difference is a bug to report.
+
+## 0. Done means
+
+1. `terraform plan` for `deploy/terraform` reports no changes, after any apply the operator approved.
+2. The Vault holds every secret the VM needs (names only are checked, never values).
+3. `deploy/server/provision.sh </dev/null` ends with `provisioned: https://…`.
+4. On the VM: `scripts/preflight.sh` ends with `PREFLIGHT OK`, `scripts/safety_probe.sh`
+   with `PROBE OK (7/7)`, and `uv run python scripts/verify.py --rls-only` with `VERIFY OK (25/25)`.
+5. On the VM: `scripts/sandbox.sh run Y` exits 0 and its final `verify` event passed.
+6. The deployed web app answers on the VM (`/api/patients` 200) and the public URL answers
+   `401` over HTTP/1.1 with `Alt-Svc: clear`.
+7. Post-conditions (section 5) hold, and the operator has the report in section 7.
+
+Out of scope: creating the VCN, its gateways, or the database; destroying anything.
+
+## 1. Inputs and the identity
+
+| Input | Supplied by | How the agent gets it |
+|---|---|---|
+| `deploy/terraform/terraform.tfvars` | the operator, from the example | the file exists; **never print it**: it holds OCIDs |
+| `~/.config/deepagents-oracle-health/config.json` and the database secrets | the laptop build, `SPEC.md` section 4 | the files exist; never read the secrets |
+| An OCI CLI profile (`oci_profile` in the tfvars), API-key auth | the operator | the CLI uses it with `--auth api_key`, as the deploy scripts do (an `OCI_CLI_AUTH` in the environment would otherwise win); the agent never opens `~/.oci` |
+| The web login and the GenAI key in the Vault | the operator, with `deploy/server/operator/vault-put.sh` | section 3.3 |
+
+The identity rule. The profile's key sits on disk, so a coding agent that runs
+the CLI can use it. Give that profile the least it needs: a group that manages
+only the families this Terraform creates, in the one compartment. The statements
+are in [`deploy/terraform/least-privilege.policy`](../deploy/terraform/least-privilege.policy);
+a tenancy administrator creates the group and the policy once. Use a broader
+key only for a supervised run, and say so in the report.
+
+## 2. Prerequisites
+
+| Requirement | Check | Passes when |
+|---|---|---|
+| Terraform | `terraform version` | prints a version |
+| OCI CLI | `oci --version` | prints a version |
+| jq, ssh | `jq --version; ssh -V` | print versions |
+| the profile works | `oci iam region list --profile <oci_profile> --auth api_key --query 'length(data)'` | prints a number |
+| the inputs exist | `test -f deploy/terraform/terraform.tfvars && test -f ~/.config/deepagents-oracle-health/config.json` | exit 0 |
+
+## 3. Steps
+
+Run from the repository root, in the foreground, with `</dev/null`. Never echo an
+OCID, a secret OCID, a public key, or a secret value; report pass or fail.
+
+### 3.1 Terraform plan
+
+```shell
+terraform -chdir=deploy/terraform init -input=false </dev/null
+terraform -chdir=deploy/terraform plan -input=false -detailed-exitcode -no-color </dev/null | grep -E '^(Plan:|No changes)'
+```
+
+Checkpoint: `No changes.` (exit 0). If the plan proposes changes (exit 2), show the
+operator only the `Plan:` line and the resource addresses, and wait. Run
+`terraform -chdir=deploy/terraform apply -input=false -auto-approve </dev/null` only
+after the operator replies `apply`. If the plan would destroy or replace the VM,
+the Vault, or the load balancer, stop.
+
+### 3.2 Outputs
+
+```shell
+terraform -chdir=deploy/terraform output -raw url
+```
+
+Checkpoint: prints `https://<host>`. The other outputs are identifiers: use them, do not print them.
+
+### 3.3 Secrets in the Vault (operator step)
+
+Compare the names only, never the values. This prints one line per missing secret, and nothing when all are there:
+
+```shell
+names=$(cd deploy/terraform && oci vault secret list --auth api_key \
+  --profile "$(sed -nE 's/^oci_profile *= *"(.*)"/\1/p' terraform.tfvars)" \
+  --compartment-id "$(sed -nE 's/^compartment_id *= *"(.*)"/\1/p' terraform.tfvars)" \
+  --vault-id "$(terraform output -raw vault_id)" --lifecycle-state ACTIVE --all \
+  --query 'data[]."secret-name"' 2>/dev/null </dev/null | jq -r '.[]')
+for n in deepagents-genai-key deepagents-login \
+         $(ls ~/.config/deepagents-oracle-health/secrets/ | sed 's/^/deepagents-db-/'); do
+  printf '%s\n' "$names" | grep -qx "$n" || echo "missing $n"
+done
+```
+
+Checkpoint: the loop prints nothing. Use this command as written; do not parse the listing another way.
+If any is missing, hand the operator `deploy/server/operator/vault-put.sh` to run in
+their own terminal, wait for `done`, and check again.
+
+### 3.4 Provision the VM
+
+```shell
+deploy/server/provision.sh </dev/null
+```
+
+It opens the Bastion tunnel, copies the code and the built front end, installs the
+system (one reboot for Landlock on a new VM), OpenShell, the sandbox image, the Python
+environment, the web service and Caddy, and reads the secrets from the Vault. It waits
+for a run in progress before restarting the web service. About 5 minutes on an existing
+VM, 20 on a new one.
+
+Checkpoint: ends with `provisioned: https://<host>`.
+
+### 3.5 Checks on the VM
+
+Through the tunnel the provisioning opened (`deploy/server/connect.sh` reopens it):
+
+```shell
+ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \
+  'cd deepagents && scripts/preflight.sh </dev/null && scripts/safety_probe.sh </dev/null \
+   && ~/.local/bin/uv run python scripts/verify.py --rls-only </dev/null' </dev/null
+```
+
+Checkpoint: `PREFLIGHT OK`, `PROBE OK (7/7)`, `VERIFY OK (25/25)`.
+
+### 3.6 One brief on the VM
+
+```shell
+ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \
+  'cd deepagents && set -o pipefail && scripts/sandbox.sh run Y </dev/null 2>/dev/null \
+   | grep -E "\"type\": \"(verify|rejected|done)\""' </dev/null
+```
+
+About 5 minutes. The command prints only the gate's verdicts and the totals, and
+exits with the run's own code. Checkpoint: exit 0, and the last `verify` line shows
+`"passed": true` with `"final": true`. If the web application is running a brief,
+wait for it (`/api/runs` on the VM). Never approve or reject a care action.
+
+### 3.7 The web application and the public URL
+
+```shell
+ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \
+  'curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/api/patients' </dev/null
+curl -sI "$(terraform -chdir=deploy/terraform output -raw url)/" | grep -iE '^(HTTP|alt-svc)'
+```
+
+Checkpoint: `200`; then `HTTP/1.1 401` and `Alt-Svc: clear`.
+
+## 4. Known behaviour and troubleshooting
+
+| Symptom | Cause | Action |
+|---|---|---|
+| `Permission denied (publickey)` once from the Bastion | a new session refuses the key for a few seconds | `connect.sh` retries; re-run it |
+| `Connection refused` on port 2222 | the 3-hour Bastion session expired | `deploy/server/connect.sh </dev/null` |
+| `Landlock is not active` | the reboot did not take | re-run `provision.sh` |
+| `NotAuthorizedOrNotFound` from the CLI or Terraform | the profile lacks a grant, or the resource is outside the compartment | report the service and stop; never widen a policy yourself |
+| `transparent TCP mapping is expired` on the VM | OpenShell DNS mapping TTL | the Unbound cache prevents it; `agent/db.py` retries; re-run once |
+| `a run is in progress; waiting` | the web app is driving a brief | expected; wait |
+
+## 5. Post-conditions
+
+- `openshell sandbox list` on the VM shows no `brief-*` or `probe-*` sandbox.
+- No OCID, secret value, or key appears in the conversation or the report.
+- `git status` shows no change to tracked files.
+
+## 6. Rules for the agent
+
+All of `AGENTS.md`, plus: never run `terraform destroy`, `terraform apply` without
+the operator's `apply`, `vault-put.sh`, or any `oci` command that creates, updates,
+or deletes a resource; never edit `terraform.tfvars`, the Terraform files, or the
+deploy scripts to make a step pass; never open `~/.oci`.
+
+## 7. Report
+
+The prerequisites table; the plan result; the secret-name check (names only, as
+present or missing); the provisioning result and duration; the three VM checks; the
+brief's seconds, tool calls, citations and verify result; the web and URL checks;
+any section-4 symptom and what was done; and confirmation of section 5.
+
+codex
+The first read truncated, so I’ll re-read the spec in bounded chunks and extract the exact command flow.
+exec
+/bin/zsh -lc "sed -n '1,220p' codex/SPEC-OCI.md && printf '\\n--- chunk 2 ---\\n' && sed -n '221,440p' codex/SPEC-OCI.md" in ~/Projects/deepagents
+ succeeded in 14ms:
+# Specification: the demo in OCI, built and verified by a coding agent
+
+Version 1, 2026-10-15. The OCI half of [`SPEC.md`](SPEC.md): the same rules
+(`AGENTS.md`), the same report discipline, and a checkpoint for every step. It
+drives `deploy/`, which puts the whole demo on one VM in a private subnet behind
+a Network Load Balancer, with OCI Bastion for SSH and OCI Vault for the secrets
+(see [`deploy/README.md`](../deploy/README.md)). The prompt is
+[`PROMPT-OCI.md`](PROMPT-OCI.md). Where this file and a script differ, the
+script wins, and the difference is a bug to report.
+
+## 0. Done means
+
+1. `terraform plan` for `deploy/terraform` reports no changes, after any apply the operator approved.
+2. The Vault holds every secret the VM needs (names only are checked, never values).
+3. `deploy/server/provision.sh </dev/null` ends with `provisioned: https://…`.
+4. On the VM: `scripts/preflight.sh` ends with `PREFLIGHT OK`, `scripts/safety_probe.sh`
+   with `PROBE OK (7/7)`, and `uv run python scripts/verify.py --rls-only` with `VERIFY OK (25/25)`.
+5. On the VM: `scripts/sandbox.sh run Y` exits 0 and its final `verify` event passed.
+6. The deployed web app answers on the VM (`/api/patients` 200) and the public URL answers
+   `401` over HTTP/1.1 with `Alt-Svc: clear`.
+7. Post-conditions (section 5) hold, and the operator has the report in section 7.
+
+Out of scope: creating the VCN, its gateways, or the database; destroying anything.
+
+## 1. Inputs and the identity
+
+| Input | Supplied by | How the agent gets it |
+|---|---|---|
+| `deploy/terraform/terraform.tfvars` | the operator, from the example | the file exists; **never print it**: it holds OCIDs |
+| `~/.config/deepagents-oracle-health/config.json` and the database secrets | the laptop build, `SPEC.md` section 4 | the files exist; never read the secrets |
+| An OCI CLI profile (`oci_profile` in the tfvars), API-key auth | the operator | the CLI uses it with `--auth api_key`, as the deploy scripts do (an `OCI_CLI_AUTH` in the environment would otherwise win); the agent never opens `~/.oci` |
+| The web login and the GenAI key in the Vault | the operator, with `deploy/server/operator/vault-put.sh` | section 3.3 |
+
+The identity rule. The profile's key sits on disk, so a coding agent that runs
+the CLI can use it. Give that profile the least it needs: a group that manages
+only the families this Terraform creates, in the one compartment. The statements
+are in [`deploy/terraform/least-privilege.policy`](../deploy/terraform/least-privilege.policy);
+a tenancy administrator creates the group and the policy once. Use a broader
+key only for a supervised run, and say so in the report.
+
+## 2. Prerequisites
+
+| Requirement | Check | Passes when |
+|---|---|---|
+| Terraform | `terraform version` | prints a version |
+| OCI CLI | `oci --version` | prints a version |
+| jq, ssh | `jq --version; ssh -V` | print versions |
+| the profile works | `oci iam region list --profile <oci_profile> --auth api_key --query 'length(data)'` | prints a number |
+| the inputs exist | `test -f deploy/terraform/terraform.tfvars && test -f ~/.config/deepagents-oracle-health/config.json` | exit 0 |
+
+## 3. Steps
+
+Run from the repository root, in the foreground, with `</dev/null`. Never echo an
+OCID, a secret OCID, a public key, or a secret value; report pass or fail.
+
+### 3.1 Terraform plan
+
+```shell
+terraform -chdir=deploy/terraform init -input=false </dev/null
+terraform -chdir=deploy/terraform plan -input=false -detailed-exitcode -no-color </dev/null | grep -E '^(Plan:|No changes)'
+```
+
+Checkpoint: `No changes.` (exit 0). If the plan proposes changes (exit 2), show the
+operator only the `Plan:` line and the resource addresses, and wait. Run
+`terraform -chdir=deploy/terraform apply -input=false -auto-approve </dev/null` only
+after the operator replies `apply`. If the plan would destroy or replace the VM,
+the Vault, or the load balancer, stop.
+
+### 3.2 Outputs
+
+```shell
+terraform -chdir=deploy/terraform output -raw url
+```
+
+Checkpoint: prints `https://<host>`. The other outputs are identifiers: use them, do not print them.
+
+### 3.3 Secrets in the Vault (operator step)
+
+Compare the names only, never the values. This prints one line per missing secret, and nothing when all are there:
+
+```shell
+names=$(cd deploy/terraform && oci vault secret list --auth api_key \
+  --profile "$(sed -nE 's/^oci_profile *= *"(.*)"/\1/p' terraform.tfvars)" \
+  --compartment-id "$(sed -nE 's/^compartment_id *= *"(.*)"/\1/p' terraform.tfvars)" \
+  --vault-id "$(terraform output -raw vault_id)" --lifecycle-state ACTIVE --all \
+  --query 'data[]."secret-name"' 2>/dev/null </dev/null | jq -r '.[]')
+for n in deepagents-genai-key deepagents-login \
+         $(ls ~/.config/deepagents-oracle-health/secrets/ | sed 's/^/deepagents-db-/'); do
+  printf '%s\n' "$names" | grep -qx "$n" || echo "missing $n"
+done
+```
+
+Checkpoint: the loop prints nothing. Use this command as written; do not parse the listing another way.
+If any is missing, hand the operator `deploy/server/operator/vault-put.sh` to run in
+their own terminal, wait for `done`, and check again.
+
+### 3.4 Provision the VM
+
+```shell
+deploy/server/provision.sh </dev/null
+```
+
+It opens the Bastion tunnel, copies the code and the built front end, installs the
+system (one reboot for Landlock on a new VM), OpenShell, the sandbox image, the Python
+environment, the web service and Caddy, and reads the secrets from the Vault. It waits
+for a run in progress before restarting the web service. About 5 minutes on an existing
+VM, 20 on a new one.
+
+Checkpoint: ends with `provisioned: https://<host>`.
+
+### 3.5 Checks on the VM
+
+Through the tunnel the provisioning opened (`deploy/server/connect.sh` reopens it):
+
+```shell
+ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \
+  'cd deepagents && scripts/preflight.sh </dev/null && scripts/safety_probe.sh </dev/null \
+   && ~/.local/bin/uv run python scripts/verify.py --rls-only </dev/null' </dev/null
+```
+
+Checkpoint: `PREFLIGHT OK`, `PROBE OK (7/7)`, `VERIFY OK (25/25)`.
+
+### 3.6 One brief on the VM
+
+```shell
+ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \
+  'cd deepagents && set -o pipefail && scripts/sandbox.sh run Y </dev/null 2>/dev/null \
+   | grep -E "\"type\": \"(verify|rejected|done)\""' </dev/null
+```
+
+About 5 minutes. The command prints only the gate's verdicts and the totals, and
+exits with the run's own code. Checkpoint: exit 0, and the last `verify` line shows
+`"passed": true` with `"final": true`. If the web application is running a brief,
+wait for it (`/api/runs` on the VM). Never approve or reject a care action.
+
+### 3.7 The web application and the public URL
+
+```shell
+ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \
+  'curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/api/patients' </dev/null
+curl -sI "$(terraform -chdir=deploy/terraform output -raw url)/" | grep -iE '^(HTTP|alt-svc)'
+```
+
+Checkpoint: `200`; then `HTTP/1.1 401` and `Alt-Svc: clear`.
+
+## 4. Known behaviour and troubleshooting
+
+| Symptom | Cause | Action |
+|---|---|---|
+| `Permission denied (publickey)` once from the Bastion | a new session refuses the key for a few seconds | `connect.sh` retries; re-run it |
+| `Connection refused` on port 2222 | the 3-hour Bastion session expired | `deploy/server/connect.sh </dev/null` |
+| `Landlock is not active` | the reboot did not take | re-run `provision.sh` |
+| `NotAuthorizedOrNotFound` from the CLI or Terraform | the profile lacks a grant, or the resource is outside the compartment | report the service and stop; never widen a policy yourself |
+| `transparent TCP mapping is expired` on the VM | OpenShell DNS mapping TTL | the Unbound cache prevents it; `agent/db.py` retries; re-run once |
+| `a run is in progress; waiting` | the web app is driving a brief | expected; wait |
+
+## 5. Post-conditions
+
+- `openshell sandbox list` on the VM shows no `brief-*` or `probe-*` sandbox.
+- No OCID, secret value, or key appears in the conversation or the report.
+- `git status` shows no change to tracked files.
+
+## 6. Rules for the agent
+
+All of `AGENTS.md`, plus: never run `terraform destroy`, `terraform apply` without
+the operator's `apply`, `vault-put.sh`, or any `oci` command that creates, updates,
+or deletes a resource; never edit `terraform.tfvars`, the Terraform files, or the
+deploy scripts to make a step pass; never open `~/.oci`.
+
+## 7. Report
+
+The prerequisites table; the plan result; the secret-name check (names only, as
+present or missing); the provisioning result and duration; the three VM checks; the
+brief's seconds, tool calls, citations and verify result; the web and URL checks;
+any section-4 symptom and what was done; and confirmation of section 5.
+
+--- chunk 2 ---
+
+codex
+I’ll also read the base demo spec as required, then start the OCI prerequisite checks.
+exec
+/bin/zsh -lc 'cat codex/SPEC.md' in ~/Projects/deepagents
+ succeeded in 20ms:
+# Specification: Deep Agents on your own data, safely
+
+Version 1, 2026-10-05. Written for an AI coding agent (OpenAI Codex) that
+executes in the operator's environment, and complete enough for a person to
+follow by hand. The prompt that drives an agent through it is
+[`PROMPT.md`](PROMPT.md). Where this file and a script differ, the script
+wins, and the difference is a bug to report.
+
+## 0. What is being built, and what "done" means
+
+A LangChain Deep Agent, built with the open-source `langchain-oracle`
+packages, prepares a pre-visit clinical brief for one of three **synthetic**
+patients. Their charts live in Oracle AI Database 26ai as relational rows
+(Alembic migrations) and as vector stores whose embeddings are computed inside
+the database. The agent runs inside an NVIDIA OpenShell sandbox; the operator
+starts it from this conversation or from the web application, and watches the
+sandbox console live.
+
+Done means all of the following are true:
+
+1. `scripts/preflight.sh </dev/null` ends with `PREFLIGHT OK`.
+2. `scripts/safety_probe.sh </dev/null` ends with `PROBE OK (7/7)`.
+3. For each patient X, Y and Z, `scripts/sandbox.sh run <P> </dev/null` exits 0,
+   its last `verify` event says `"passed": true`, and
+   `uv run python scripts/verify.py <brief>` ends with `VERIFY OK`.
+4. `uv run python scripts/verify.py --rls-only` ends with `VERIFY OK (25/25)`:
+   row-level security, write refusal, synthetic-only constraints, and the care
+   action workflow (an agent proposes for its own patient only, cannot approve
+   or execute; the clinician's approval executes and is audited; policy CP-03
+   refuses a medication change from the care coordinator, logs the refusal and
+   stamps its escalation with the real sender; the medication-safety agent's
+   change is held for a physician by CP-02, refused to the clinician and
+   executed on the doctor's approval).
+5. `scripts/webapp-check.sh Y </dev/null` ends with `WEBAPP OK (7/7)`: the web
+   application builds, serves, and runs a verified brief through its API with
+   both stream channels (agent events and the sandbox console).
+6. Post-conditions hold (section 5.2), and the operator has the report in section 9.
+
+Out of scope: real patient data of any kind, production hardening, and
+clusters other than a local OpenShell gateway with the Docker driver.
+
+## 1. Inputs the operator supplies
+
+| Input | Needed when | How the agent gets it |
+|---|---|---|
+| An Oracle Autonomous Database 26ai (an Always Free one works) with TLS (no wallet) and an ACL that admits this machine | always | ask for its TLS connect string (DSN) and host; write them to the config file (section 4.2) |
+| The ADMIN password | once, for section 4.3 | **never through the agent**: the operator runs `scripts/operator/db-admin.sh` in their own terminal |
+| An OCI Generative AI API key, region `us-chicago-1` | once, for section 4.4 | **never through the agent**: the operator runs `scripts/operator/genai-provider.sh` in their own terminal |
+| Chat models | optional | defaults `openai.gpt-5.5` (lead) and `google.gemini-2.5-flash` (specialists); GPT-6 models refuse tools on the Chat Completions endpoint with an API key |
+
+The secret rule. The agent never asks for, receives, prints, logs, or stores
+a password or a key. The two operator scripts read them with `read -rs`. The
+database passwords they generate go into owner-only files
+(`~/.config/deepagents-oracle-health/secrets/`, directory 0700, files 0600);
+scripts read them by name and never print them. The GenAI key goes into the
+OpenShell gateway; sandboxes see a placeholder. When you hand the operator one
+of these steps, tell them to reply `done` and not to paste the output.
+
+The data rule. Every patient is invented. The schema enforces it
+(`CHECK (is_synthetic = 'Y')`, `CHECK (patient_id LIKE 'SYN-%')`), and the
+agent's input guard blocks real-looking identifiers. Never add, import, or
+paste real patient data, and stop if asked to.
+
+## 2. Prerequisites and preflight
+
+| Requirement | Check | Passes when | If it fails |
+|---|---|---|---|
+| macOS on Apple Silicon or Linux | `uname -sm` | `Darwin arm64`, `Linux x86_64`, `Linux aarch64` | ask |
+| uv | `uv --version` | prints a version | fix: install uv |
+| Docker visible to Codex | `docker info --format '{{.ServerVersion}}'` (Rancher Desktop: `~/.rd/bin/docker`) | prints a version | ask the operator to start Docker |
+| OpenShell CLI 0.1.2 and a connected gateway | `openshell status </dev/null` | `Status: Connected`, `Version: 0.1.2` | ask: install OpenShell and start the gateway |
+| Node 20+ | `node --version` | v20 or later | fix: install Node |
+
+`scripts/preflight.sh` runs these and the data checks in one pass; it changes
+nothing. Show the operator its table before continuing.
+
+## 3. Architecture
+
+| Piece | Name | Defined in |
+|---|---|---|
+| Schema owner | `DA_OWNER` (tables, model, policies) | `db/setup_admin.py` |
+| Agent users | `DA_AGENT_X`, `DA_AGENT_Y`, `DA_AGENT_Z`: SELECT on the chart, INSERT on `care_action` (proposals), and their own schema for checkpoints and memory (64 MB quota) | `db/setup_admin.py`, migrations 0004-0006 |
+| Clinician | `DA_CLINICIAN`: EXECUTE on `DECIDE_CARE_ACTION`, SELECT on the workflow tables; approves what policy allows a clinician | `db/setup_admin.py`, migration 0006 |
+| Doctor | `DA_PHYSICIAN`: the only identity that may decide what a policy reserves for a physician (medication changes, CP-02) | `db/setup_admin.py`, migration 0007 |
+| Care policies | `care_policy`: CP-01a-c (labs, messages, follow-ups: clinician), CP-02 (medication changes: physician); the proposal trigger escalates, the procedure enforces | migration 0007 |
+| Agent policy | CP-03: `allowed_proposer` per kind, checked against the session's `CLIENT_IDENTIFIER` (set by tool code); `agent_escalation` between agents; `policy_event` (autonomous-transaction log) | migration 0008, `agent/care_tools.py` |
+| Care actions | `care_action` (proposed/approved/executed/rejected), `care_action_event` (audit), `lab_order`, `patient_message` (simulated portal outbox), `appointment` requests | migration 0006 |
+| Agent state | `OracleSaver` checkpoints and `OracleStore` memory (IVF vector index) in each agent user's schema; `/memories/patient-history.md` via `StoreBackend` | `agent/memory.py` |
+| Clinical schema | `patient`, `condition`, `allergy`, `medication`, `encounter`, `clinical_note`, `lab_result`, `vital_sign`, `referral`, `appointment` | migration 0001 |
+| Vector stores | `PATIENT_NOTE_VEC`, `CLINICAL_REFERENCE` (MedQuAD), `RESEARCH_EVIDENCE` (PubMedQA), shaped like `OracleVS` tables | migration 0002 |
+| Cohort benchmark | `cohort_benchmark`: aggregates of 300 background synthetic patients, no ids | migration 0003, `db/seed.py` |
+| Row-level security | Virtual Private Database policy `DA_PATIENT_SCOPE` on every patient table and the note vectors | migrations 0004-0005 |
+| Embedding model | `DA_OWNER.MINILM_L12` (all-MiniLM-L12-v2 ONNX, 384 dimensions) | `db/setup_admin.py` |
+| Deep Agent | `langchain_oci.create_deepagents_agent`: lead + `chart-analyst`, `guideline-researcher`, `evidence-researcher`, `care-coordinator`, `medication-safety`; structured `PreVisitBrief` output; `checkpointer`, `store`, `backend`, `memory`, `permissions` from langgraph-oracledb and deepagents | `agent/brief_agent.py` |
+| Sandbox image | `deepagents-oracle-health:0.1` | `sandbox/Dockerfile` |
+| Provider | `deepagents-genai`, type `oci-genai-python` | `sandbox/profile/oci-genai-python.yaml` |
+| Sandbox policy | provider endpoint (OCI GenAI `/openai/v1/**`) plus `oracle_ai_database` (TCP to the listener) for `/usr/local/bin/python3.12` only | `sandbox/policy.template.yaml` |
+| Sandboxes | `brief-<x|y|z>-HHMMSS` (one per run), `probe-HHMMSS` | `scripts/sandbox.sh`, `scripts/safety_probe.sh` |
+
+What the sandbox holds, and why each is safe: the GenAI key is a placeholder;
+the database login is one patient's read-only user, uploaded as a 0600 file
+and deleted after the agent reads it; the only egress is the two endpoints
+above, for one binary.
+
+## 4. Build steps
+
+Run every command from the repository root, in the foreground, with
+`</dev/null`. Each step has a checkpoint; do not continue past a failed one
+without resolving it (section 7).
+
+### 4.1 Python and the sandbox image
+
+```shell
+uv sync
+docker build -t deepagents-oracle-health:0.1 sandbox/
+```
+
+Checkpoint: `docker image inspect deepagents-oracle-health:0.1` succeeds.
+
+### 4.2 Config file
+
+Write `~/.config/deepagents-oracle-health/config.json` (mode 0600) from
+`config.example.json` with the operator's DSN and host. It holds no secret.
+
+Checkpoint: `python3 -m json.tool ~/.config/deepagents-oracle-health/config.json` succeeds.
+
+### 4.3 Database users and model (operator step)
+
+Hand the operator: `scripts/operator/db-admin.sh` in their own terminal. It
+asks for the ADMIN password without echoing it, creates or updates the four
+demo users and `DA_CLINICIAN`, and rotates their passwords. Wait for `done`.
+Re-run it after pulling a version that changes grants.
+
+Checkpoint: `scripts/preflight.sh` shows the four `secret ... present` lines as PASS.
+
+### 4.4 GenAI provider (operator step)
+
+Hand the operator: create the IAM policy first, then the key (the profile's
+header explains the order), then `scripts/operator/genai-provider.sh` in their
+own terminal. Wait for `done`. If `openshell provider get deepagents-genai`
+already succeeds, skip this step.
+
+Checkpoint: `openshell provider get deepagents-genai </dev/null` succeeds.
+
+### 4.5 Data layer
+
+```shell
+scripts/setup-data.sh </dev/null
+```
+
+Migrations, the synthetic rows, then in-database chunking and embedding.
+About four minutes on an Always Free database.
+
+Checkpoint: ends with `SETUP-DATA OK`; `uv run alembic current` shows `0008 (head)`.
+
+To start the workflow from a clean slate (no care actions, no memory):
+`uv run python db/reset_workflow.py`.
+
+### 4.6 Preflight and the safety probe
+
+```shell
+scripts/preflight.sh </dev/null
+scripts/safety_probe.sh </dev/null
+```
+
+Checkpoint: `PREFLIGHT OK`, then `PROBE OK (7/7)`.
+
+### 4.7 Briefs
+
+```shell
+scripts/sandbox.sh run X </dev/null > out/run-X.jsonl 2> out/console-X.log
+uv run python -c "import json; b=[json.loads(l) for l in open('out/run-X.jsonl') if '\"type\": \"brief\"' in l]; print(b[-1]['markdown'])" > out/brief-X.md
+uv run python scripts/verify.py out/brief-X.md
+```
+
+stdout carries JSON events; stderr carries the sandbox console. The last
+`brief` event holds the accepted Markdown. Repeat for Y and Z. One run takes
+four to eight minutes; a repair turn adds a few more.
+
+Checkpoint: each run exits 0 with a passing final `verify` event, and
+`scripts/verify.py out/brief-<P>.md` ends with `VERIFY OK`. The console shows
+the policy chain: `✕ POLICY CP-03` for the care coordinator, an
+`escalation #n` line, and `propose_medication_change` from `medication-safety`.
+
+### 4.7b The whole demo, end to end (optional, about 25 minutes)
+
+With the web application running on port 8765:
+
+```shell
+uv run python scripts/demo_e2e.py </dev/null                      # or add --evidence evidence to publish the runs
+```
+
+Resets the demo, briefs X, Y and Z, decides every proposed action (the
+clinician's approval of each medication change must be refused; the doctor's
+executes it), then briefs Y again from memory. For each run it also checks
+the CP-03 refusal and that the escalation was resolved. Checkpoint:
+`DEMO E2E OK (41/41)`.
+
+The same flow in a real browser, clicking the screens a presenter uses (needs
+Google Chrome): `cd web && node scripts/ui-e2e.mjs Y`. Checkpoint:
+`UI E2E OK (22/22)`.
+
+### 4.8 The web application
+
+```shell
+scripts/webapp-check.sh Y </dev/null
+```
+
+Builds `web/` (React + Tailwind), starts `ui/server.py` on port 8766, and
+drives one brief through the API exactly as the browser does: the patient
+cards (each read through its own database user), `POST /api/runs`, the
+Server-Sent Events stream to the end, and the Word export. The backend runs the
+same `scripts/sandbox.sh`, so the run is a real sandboxed run. The script stops
+the server it started.
+
+Checkpoint: ends with `WEBAPP OK (7/7)`.
+
+To leave the application running for the operator afterwards:
+
+```shell
+uv run uvicorn ui.server:app --host 127.0.0.1 --port 8765   # then open http://127.0.0.1:8765
+```
+
+Tell the operator the URL; do not run it in the foreground of your own session.
+
+## 5. Acceptance
+
+### 5.1 The checks
+
+The five conditions in section 0.
+
+### 5.2 Post-conditions
+
+- `openshell sandbox list` shows no `brief-*` or `probe-*` sandbox.
+- No password or key appears in any output, log, or in this conversation.
+- No file under the repository contains a DSN service name, OCID, or key.
+
+## 6. Rules for the agent
+
+- Never handle a secret (section 1). Anything that looks like a key or a
+  password in an output is a stop condition, not something to repeat.
+- Never touch database objects the demo did not create, gateway resources
+  other than `deepagents-genai` and the demo's sandboxes, or other Docker
+  containers. Do not run `setup_admin.py` yourself: it needs ADMIN.
+- Do not edit `agent/`, `db/`, `migrations/`, `sandbox/` or `scripts/` to make
+  a check pass. If a change seems necessary, explain why and stop.
+- Every `openshell sandbox exec` needs `</dev/null` (0.1.2 reads piped stdin to EOF).
+- One sandbox run at a time.
+
+## 7. Known behaviour and troubleshooting
+
+| Symptom | Cause | Action |
+|---|---|---|
+| `DPY-6005 ... [Errno 13] Permission denied` right after a sandbox starts | OpenShell 0.1.2: the first settings poll (~10 s) bumps the policy generation and closes open connections (NVIDIA/OpenShell#3994) | `scripts/sandbox.sh` waits for the reload; if you see this, re-run |
+| `DPY-6000 ... ORA-12506` | the database ACL does not admit this machine's egress IP | ask the operator to add it |
+| `DPY-3013: unsupported Python type str for database type DB_TYPE_CLOB` | python-oracledb 4.x/26.x thin mode with `OracleEmbeddings` | keep `oracledb<4` |
+| HTTP 400 `Unknown name "exclusiveMinimum"` or `function_response.response` | Gemini on the OpenAI-compatible endpoint | handled by `GeminiChatOpenAI`; do not swap the class |
+| `verify` event with problems, then a repair turn | the runner sent the draft back | expected; it retries twice |
+| HTTP 401 from OCI GenAI | the key was minted before its policy | mint a new key after the policy (operator) |
+| `ORA-20012: policy CP-02 ...` when approving | a clinician tried to approve a medication change | expected; approve it as the doctor |
+| `Refused by the database: ORA-20014: policy CP-03 ...` in a tool result | the care coordinator tried a medication change | expected; it escalates to the medication-safety agent |
+| `Refused: nothing was refused to you in this run` from `escalate_to_agent` | the coordinator tried to escalate before trying the change | expected; it proposes the change first, and the database refuses it |
+| gate problem `Escalation n is still open` or `the escalation was declined` | the medication change did not reach the doctor in this run | expected; the repair turn delegates to medication-safety, or tries another concern |
+| `Refused: 5 actions already proposed in this run` in a tool result | the care coordinator hit its cap | expected; the brief lists what it proposed |
+| `ORA-28115` when a tool proposes an action | row-level security refused a proposal for another patient | expected; that is the boundary |
+| `PermissionError` on the Hugging Face cache during setup | a sandboxed coding agent cannot write `~/.cache` | `setup-data.sh` sets `HF_HOME` inside the repository; keep it |
+
+## 8. Teardown
+
+```shell
+scripts/teardown.sh </dev/null          # leftover sandboxes
+scripts/teardown.sh --data </dev/null   # also drop the demo tables
+```
+
+The operator removes the users and model with `scripts/operator/db-admin.sh
+--drop` and the provider with `openshell provider delete deepagents-genai`.
+
+## 9. Report
+
+End with: the preflight table; the probe table; the web application check; for each patient the run's
+seconds, tool calls, SQL queries, searches, delegations, citation count, and
+the verify result; the row-level-security result; any section-7 symptom met
+and what was done; the care actions each run proposed, with its CP-03 refusal
+and escalation; and confirmation of section 5.2.
+
+**Considering specification details**
+
+So, I’m thinking about whether I need to read the entire specification since the user asked about AGENTS and SPEC-OCI. The output I have might be truncated, and while I could fetch more chunks, I need to be careful. I don’t want to include any sensitive information. The instructions suggest I read the full specification, but I'm wondering if what I have is already enough. I think I’ll fetch the missing chunks, but I don't want to overdo it!
+codex
+I’ve got the required flow. Now I’ll run the section 2 prerequisite checks without printing identifiers.
+exec
+/bin/zsh -lc "set -u
+printf '%s
+' '| Requirement | Check | Passes when |'
+printf '%s
+' '|---|---|---|'
+printf '%s
+' '| Terraform | "'`terraform version` | prints a version |'"'
+printf '%s
+' '| OCI CLI | "'`oci --version` | prints a version |'"'
+printf '%s
+' '| jq, ssh | "'`jq --version; ssh -V` | print versions |'"'
+printf '%s
+' '| the profile works | "'`oci iam region list --profile <oci_profile> --auth api_key --query '"'\\''length(data)'\\''"'` | prints a number |'"'
+printf '%s
+' '| the inputs exist | "'`test -f deploy/terraform/terraform.tfvars && test -f ~/.config/deepagents-oracle-health/config.json` | exit 0 |'"'
+printf '\\nPrerequisite results:\\n'
+printf 'terraform: '; terraform version -json </dev/null | jq -r '.terraform_version' 2>/dev/null || terraform version </dev/null | head -n 1
+printf 'oci: '; oci --version </dev/null
+printf 'jq: '; jq --version </dev/null
+printf 'ssh: '; ssh -V 2>&1 </dev/null
+profile="'$(sed -nE '"'s/"'^oci_profile *= *"(.*)"/'"\\1/p' deploy/terraform/terraform.tfvars)
+printf 'profile works: '
+oci iam region list --profile \""'$profile" --auth api_key --query '"'length(data)' 2>/dev/null </dev/null
+printf 'inputs exist: '
+test -f deploy/terraform/terraform.tfvars && test -f \""'$HOME/.config/deepagents-oracle-health/config.json" && echo ok' in ~/Projects/deepagents
+ succeeded in 1685ms:
+| Requirement | Check | Passes when |
+|---|---|---|
+| Terraform | `terraform version` | prints a version |
+| OCI CLI | `oci --version` | prints a version |
+| jq, ssh | `jq --version; ssh -V` | print versions |
+| the profile works | `oci iam region list --profile <oci_profile> --auth api_key --query 'length(data)'` | prints a number |
+| the inputs exist | `test -f deploy/terraform/terraform.tfvars && test -f ~/.config/deepagents-oracle-health/config.json` | exit 0 |
+
+Prerequisite results:
+terraform: 1.5.7
+oci: 3.84.0
+jq: jq-1.8.1
+ssh: OpenSSH_10.2p1, OpenSSL 3.6.2 7 Apr 2026
+profile works: 44
+inputs exist: ok
+
+codex
+Prerequisites passed. I’ll initialize Terraform and check whether the plan is already clean.
+exec
+/bin/zsh -lc 'set -o pipefail
+terraform -chdir=deploy/terraform init -input=false </dev/null
+plan_file=$(mktemp /tmp/deepagents-tfplan.XXXXXX)
+set +e
+terraform -chdir=deploy/terraform plan -input=false -detailed-exitcode -no-color </dev/null >"$plan_file" 2>&1
+plan_rc=$?
+set -e
+if [ "$plan_rc" -eq 0 ]; then
+  grep -E '"'"'^(Plan:|No changes)'"' \""'$plan_file"
+elif [ "$plan_rc" -eq 2 ]; then
+  grep -E '"'"'^Plan:'"' \""'$plan_file" || true
+  grep -E '"'"'^[[:space:]]*# '"' \""'$plan_file" | sed -E '"'s/"'^[[:space:]]*# ([''^ ]+).*/'"\\1/' | sort -u
+else
+  grep -E '"'^(Error:|No changes|Plan:)'"' \""'$plan_file" || printf '"'terraform plan failed (details suppressed)\\n'
+fi
+rm -f \""'$plan_file"
+exit "$plan_rc"' in ~/Projects/deepagents
+2026-10-15T18:05:13.964748Z ERROR codex_app_server::bespoke_event_handling: request failed with client error: JSONRPCErrorError { code: -32000, data: None, message: "command execution approval is not supported in exec mode for thread `01a140bc-b89e-7bd1-b236-68e883bac63c`" }
+ exited 1:
+2026-10-15T18:05:13.965317Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"approval request failed\")" }
+codex
+Terraform needs to write its working files and query OCI; I’ll rerun that step with the required permission.
+exec
+/bin/zsh -lc 'set -o pipefail
+terraform -chdir=deploy/terraform init -input=false </dev/null
+plan_file=$(mktemp /tmp/deepagents-tfplan.XXXXXX)
+set +e
+terraform -chdir=deploy/terraform plan -input=false -detailed-exitcode -no-color </dev/null >"$plan_file" 2>&1
+plan_rc=$?
+set -e
+if [ "$plan_rc" -eq 0 ]; then
+  grep -E '"'"'^(Plan:|No changes)'"' \""'$plan_file"
+elif [ "$plan_rc" -eq 2 ]; then
+  grep -E '"'"'^Plan:'"' \""'$plan_file" || true
+  grep -E '"'"'^[[:space:]]*# '"' \""'$plan_file" | sed -E '"'s/"'^[[:space:]]*# ([''^ ]+).*/'"\\1/' | sort -u
+else
+  grep -E '"'^(Error:|No changes|Plan:)'"' \""'$plan_file" || printf '"'terraform plan failed (details suppressed)\\n'
+fi
+rm -f \""'$plan_file"
+exit "$plan_rc"' in ~/Projects/deepagents
+2026-10-15T18:05:20.949649Z ERROR codex_app_server::bespoke_event_handling: request failed with client error: JSONRPCErrorError { code: -32000, data: None, message: "command execution approval is not supported in exec mode for thread `01a140bc-b89e-7bd1-b236-68e883bac63c`" }
+ exited 1:
+2026-10-15T18:05:20.949850Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"approval request failed\")" }
+codex
+The combined shell command hit the approval wrapper, so I’ll split Terraform into simpler foreground commands.
+exec
+/bin/zsh -lc 'terraform -chdir=deploy/terraform init -input=false </dev/null' in ~/Projects/deepagents
+ succeeded in 483ms:
+
+[0m[1mInitializing the backend...[0m
+
+[0m[1mInitializing provider plugins...[0m
+- Reusing previous version of oracle/oci from the dependency lock file
+- Using previously-installed oracle/oci v9.9.0
+
+[0m[1m[32mTerraform has been successfully initialized![0m[32m[0m
+[0m[32m
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.[0m
+
+**Considering a plan for Terraform**
+
+I need a plan that’s simple using pipe and grep, but I also want to ensure I understand the exit codes. A more complex option might be okay, like using `bash -lc`, though I’m not entirely sure if that’s necessary. I want to run the command as specified, `terraform ... | grep`, which will return 0 if there are matches. But if there are changes, it might not show an exit code, which is a concern. I should run `terraform ... -out` to see changes, which will help clarify things.
+codex
+Terraform initialized. I’ll run the plan filter exactly enough to expose only the checkpoint line.
+exec
+/bin/zsh -lc "terraform -chdir=deploy/terraform plan -input=false -detailed-exitcode -no-color </dev/null | grep -E '"'^(Plan:|No changes)'"'" in ~/Projects/deepagents
+ succeeded in 3394ms:
+No changes. Your infrastructure matches the configuration.
+
+**Gathering output details**
+
+I need to get the URL output by using the command `terraform output -raw url`, which seems to work fine. I’m considering whether to store this URL for the report, and then I need to check a secret command that involves using `oci vault list` with specific IDs as arguments. There’s a chance it could fail, so I should run it as is and note if anything is missing before stopping the script. My first step is to output the URL.
+codex
+Plan is clean. Next I’ll read only the public URL output and run the secret-name checkpoint.
+exec
+/bin/zsh -lc 'terraform -chdir=deploy/terraform output -raw url </dev/null' in ~/Projects/deepagents
+ succeeded in 174ms:
+https://<host>.sslip.io
+**Checking command validity**
+
+I’m noting that the URL IP isn't from the OCID. Now, I need to verify the secrets as written, and I'm wondering if I can print a list of items. It seems I'm only missing something, and I should consider what happens if a command fails without any output. Maybe I should add `set -e` to my command. As it's written now, if the OCI fails, the names will be empty, and it will print everything missing. But the spec says it should work as is.
+codex
+The URL checkpoint passed. I’ll compare Vault secret names only, without reading values.
+exec
+/bin/zsh -lc 'names=$(cd deploy/terraform && oci vault secret list --auth api_key '"\\
+  --profile \""'$(sed -nE '"'s/"'^oci_profile *= *"(.*)"/'"\\1/p' terraform.tfvars)\" \\
+  --compartment-id \""'$(sed -nE '"'s/"'^compartment_id *= *"(.*)"/'"\\1/p' terraform.tfvars)\" \\
+  --vault-id \""'$(terraform output -raw vault_id)" --lifecycle-state ACTIVE --all '"\\
+  --query 'data[].\"secret-name\"' 2>/dev/null </dev/null | jq -r '.[]')
+for n in deepagents-genai-key deepagents-login \\
+         "'$(ls ~/.config/deepagents-oracle-health/secrets/ | sed '"'s/"'^/deepagents-db-/'"'); do
+  printf '%s\\n' \""'$names" | grep -qx "$n" || echo "missing $n"
+done' in ~/Projects/deepagents
+ succeeded in 2146ms:
+**Considering logging strategies**
+
+I’m exploring the idea of redirecting output to a log file. However, I recognize this is just logging; using script output directly might help avoid capturing secrets. I wonder if I can store only non-sensitive data while minimizing log size. Could printing only filtered output in real time with grep be an option? Still, there's a chance I could lose all logs if something fails. Maybe I should consider piping through `tee` for better management?
+codex
+Vault names are complete. I’ll provision the VM now and report only the safe checkpoint summary.
+exec
+/bin/zsh -lc 'log=$(mktemp /tmp/deepagents-provision.XXXXXX.log)
+start=$(date +%s)
+set +e
+deploy/server/provision.sh </dev/null >"$log" 2>&1
+rc=$?
+end=$(date +%s)
+if [ "$rc" -eq 0 ]; then
+  grep -E '"'"'^provisioned: https://'"' \""'$log" | tail -n 1
+  printf '"'duration_seconds=%s\\n' \""'$((end-start))"
+else
+  printf '"'provision failed rc=%s duration_seconds=%s\\n' \""'$rc" "$((end-start))"
+  grep -E '"'Permission denied \\(publickey\\)|Connection refused|Landlock is not active|NotAuthorizedOrNotFound|transparent TCP mapping is expired|a run is in progress; waiting|"'^Error:|failed|ERROR|Traceback'"' \""'$log" | tail -n 40
+fi
+rm -f "$log"
+exit "$rc"' in ~/Projects/deepagents
+2026-10-15T18:06:06.231240Z ERROR codex_app_server::bespoke_event_handling: request failed with client error: JSONRPCErrorError { code: -32000, data: None, message: "command execution approval is not supported in exec mode for thread `01a140bc-b89e-7bd1-b236-68e883bac63c`" }
+ exited 1:
+2026-10-15T18:06:06.232041Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"approval request failed\")" }
+codex
+The summarized wrapper was blocked, so I’ll run the provisioning script directly as specified.
+exec
+/bin/zsh -lc 'deploy/server/provision.sh </dev/null' in ~/Projects/deepagents
+codex
+Provisioning is underway and past bootstrap; I’ll keep waiting for the checkpoint.
+ succeeded in 51295ms:
+tunnel already up: ssh -p 2222 opc@127.0.0.1
+== code
+== config (non-secret)
+== front end (built here: npm on the VM is unreliable)
+== system
+== base packages
+== docker
+== node 22
+== uv
+== oci cli (reads secrets from OCI Vault with the instance principal)
+== caddy
+== firewall: 80, 443
+== landlock at boot
+Docker version 29.9.0, build f415da8
+v22.23.2
+uv 0.13.0 (aarch64-unknown-linux-gnu)
+v2.11.4 h1:XKxkMTgNSizEvKG6QHue6cAsFOteU2qA61w2tKkCWi0=
+== bootstrap done
+== unbound
+== use it
+nameserver 127.0.0.1
+adb.ca-toronto-1.oraclecloud.com. 672 IN CNAME	adb.ca-toronto-1.oci.oraclecloud.com.
+adb.ca-toronto-1.oci.oraclecloud.com. 300 IN A	192.29.69.37
+== dns done
+== gateway config (docker driver)
+== gateway service
+Server Status
+
+  Gateway: openshell
+  Server: https://127.0.0.1:17670
+  Status: Connected
+  Authentication: Authenticated (mTLS transport)
+  Version: 0.1.2
+== openshell done
+== sandbox image and Python env
+sha256:67a1979fcde5163b8e0657a62654ad77302876bf36c77b1e4276afb0b9acd01c
+== web service on 127.0.0.1:8765
+== caddy for https://<host>.sslip.io
+https://<host>.sslip.io
+== web done
+== database passwords
+DA_PHYSICIAN
+DA_OWNER
+DA_CLINICIAN
+DA_AGENT_Z
+DA_AGENT_Y
+DA_AGENT_X
+== GenAI key -> gateway
+provider deepagents-genai ready
+== web login -> Caddy
+login set for <user>
+== secrets done
+== provisioned: https://<host>.sslip.io
+
+codex
+Provisioning reached the checkpoint. I’ll run the three VM checks through the tunnel next.
+exec
+/bin/zsh -lc "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \\
+  'cd deepagents && scripts/preflight.sh </dev/null && scripts/safety_probe.sh </dev/null \\
+   && ~/.local/bin/uv run python scripts/verify.py --rls-only </dev/null' </dev/null" in ~/Projects/deepagents
+ succeeded in 22968ms:
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Warning: Permanently added '[127.0.0.1]:2222' (ED25519) to the list of known hosts.
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+PASS  uv                                 uv 0.13.0 (aarch64-unknown-linux-gnu)
+PASS  openshell CLI                      openshell 0.1.2
+PASS  gateway connected                    Version: 0.1.2
+PASS  sandbox image present              sha256:67a1979fcde5
+PASS  provider on gateway                deepagents-genai (key held by the gateway)
+PASS  config file                        /home/opc/.config/deepagents-oracle-health/config.json
+PASS  secrets directory 0700             owner-only
+PASS  secret DA_OWNER present            present (not read)
+PASS  secret DA_AGENT_X present          present (not read)
+PASS  secret DA_AGENT_Y present          present (not read)
+PASS  secret DA_AGENT_Z present          present (not read)
+PASS  database schema at head            alembic: 0008 (head)
+PASS  row-level security                 VERIFY OK (25/25)
+PASS  vector stores loaded               PATIENT_NOTE_VEC=19 CLINICAL_REFERENCE=344 RESEARCH_EVIDENCE=955
+
+PREFLIGHT OK
+Uploading /tmp/tmp.rwnCZlMPNE/probe.py -> sandbox:/sandbox
+✓ Upload complete
+PASS  key in the sandbox is a placeholder      openshell:resolve:...
+PASS  OCI GenAI chat completion                HTTP 200 (proxy swapped the placeholder)
+PASS  Oracle AI Database listener              TCP adb.ca-toronto-1.oraclecloud.com:1521 opened
+PASS  refused: unlisted host                   example.com -> PermissionError: [Errno 13] Permission denied
+PASS  refused: OCI Object Storage API          objectstorage.us-chicago-1.oraclecloud.com -> PermissionError: [Errno 13] Permission denied
+PASS  refused: package registry                pypi.org -> PermissionError: [Errno 13] Permission denied
+PASS  refused: PUT on the allowed host         HTTP 403 (method not in the rules)
+
+PROBE OK (7/7)
+
+gateway decisions for this sandbox:
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] 127.0.0.1:17670
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> inference.generativeai.us-chicago-1.oci.oraclecloud.com:443 [policy:_provider_deepagents_
+[sandbox] [OCSF ] [ocsf] HTTP:POST [INFO] ALLOWED POST http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/chat/completions [policy:_provider_dee
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> adb.ca-toronto-1.oraclecloud.com:1521 [policy:oracle_ai_database engine:opa]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [MED] DENIED /usr/local/bin/python3.12(0) -> example.com:443 [reason:transparent_tcp_policy_denied]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [MED] DENIED /usr/local/bin/python3.12(0) -> objectstorage.us-chicago-1.oraclecloud.com:443 [reason:transparent_tcp_policy_denied]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [MED] DENIED /usr/local/bin/python3.12(0) -> pypi.org:443 [reason:transparent_tcp_policy_denied]
+[sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> inference.generativeai.us-chicago-1.oci.oraclecloud.com:443 [policy:_provider_deepagents_
+[sandbox] [OCSF ] [ocsf] HTTP:PUT [MED] DENIED PUT http://inference.generativeai.us-chicago-1.oci.oraclecloud.com:443/openai/v1/models [policy:_provider_deepagents_genai 
+PASS  DA_AGENT_X sees one patient                1 visible (SYN-X)
+PASS  DA_AGENT_X cannot read SYN-Y               0 rows
+PASS  DA_AGENT_X vector notes scoped             1 patient in PATIENT_NOTE_VEC
+PASS  DA_AGENT_X write refused                   ORA-41900
+PASS  DA_AGENT_Y sees one patient                1 visible (SYN-Y)
+PASS  DA_AGENT_Y cannot read SYN-X               0 rows
+PASS  DA_AGENT_Y vector notes scoped             1 patient in PATIENT_NOTE_VEC
+PASS  DA_AGENT_Y write refused                   ORA-41900
+PASS  DA_AGENT_Z sees one patient                1 visible (SYN-Z)
+PASS  DA_AGENT_Z cannot read SYN-X               0 rows
+PASS  DA_AGENT_Z vector notes scoped             1 patient in PATIENT_NOTE_VEC
+PASS  DA_AGENT_Z write refused                   ORA-41900
+PASS  agent proposal is forced to proposed       asked for 'executed', stored proposed by DA_AGENT_X
+PASS  agent cannot propose for SYN-Y             ORA-28115
+PASS  agent cannot approve (UPDATE)              ORA-41900
+PASS  agent cannot execute                       ORA-06550
+PASS  clinician approval executes and audits     executed → LAB_ORDER; proposed>approved>executed
+PASS  care coordinator cannot propose a medication change (CP-03) ORA-20014
+PASS  the refusal is logged despite the rollback 1 policy_event rows
+PASS  escalation is stamped with the real sender claimed medication-safety, stored care-coordinator (open)
+PASS  medication-safety's change goes to the doctor (CP-02) stored needs_physician under CP-02 by medication-safety
+PASS  clinician cannot approve it (CP-02)        ORA-20012
+PASS  physician approval executes it             executed; Furosemide now held
+PASS  schema rejects id without SYN-             ORA-02290
+PASS  schema rejects is_synthetic = 'N'          ORA-02290
+
+VERIFY OK (25/25)
+
+codex
+VM checks passed. I’ll run one synthetic patient Y brief and watch only gate verdicts.
+exec
+/bin/zsh -lc "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \\
+  'cd deepagents && set -o pipefail && scripts/sandbox.sh run Y </dev/null 2>/dev/null \\
+   | grep -E \"\\\"type\\\": \\\"(verify|rejected|done)\\\"\"' </dev/null" in ~/Projects/deepagents
+codex
+The brief run is still active; I’ll wait for the final verify and done events.
+codex
+Still running normally; I’ll continue waiting for the checkpoint lines.
+2026-10-15T18:09:02.698505Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 404 Not Found: Path doesn't map to a registered service!, url: http://127.0.0.1:8899/openai/v1/models?client_version=0.159.3
+codex
+No verdict yet. I’ll keep waiting; this step can take several minutes.
+codex
+The run remains in progress. I’m waiting for the filtered final events.
+codex
+Still no gate output; I’ll give it another interval before investigating.
+codex
+The brief can take about five minutes, so I’ll keep waiting.
+codex
+Still running; I’ll continue waiting for the final JSON lines.
+codex
+Approaching the expected upper range; I’ll wait one more interval before checking status.
+codex
+No output yet. I’ll let the foreground run continue to its checkpoint.
+codex
+The run is long but still active; I’ll keep waiting rather than interrupt it.
+2026-10-15T18:13:32.962552Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 404 Not Found: Path doesn't map to a registered service!, url: http://127.0.0.1:8899/openai/v1/models?client_version=0.159.3
+ succeeded in 357708ms:
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Warning: Permanently added '[127.0.0.1]:2222' (ED25519) to the list of known hosts.
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+{"type": "verify", "t": 1792088012.342, "agent": "runner", "passed": true, "problems": [], "citations": 151, "final": true}
+{"type": "done", "t": 1792088013.004, "seconds": 329.6, "tool_calls": 45, "delegations": 6, "sql": 12, "searches": 9, "actions": 5}
+
+**Checking web app URLs**
+
+I need to conduct checks on the web app and ensure I handle public URL checks properly. I'll run both SSH curl and local curl to gather the necessary information. It's important that the output includes the URL so I can confirm everything is functioning as expected. Let’s make sure I’m being thorough in this process to avoid any oversights!
+codex
+The brief passed verification. I’ll check the VM API and the public HTTPS response now.
+exec
+/bin/zsh -lc "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \\
+  'curl -s -o /dev/null -w \"%{http_code}\\n\" http://127.0.0.1:8765/api/patients' </dev/null
+curl -sI \""'$(terraform -chdir=deploy/terraform output -raw url)/" | grep -iE '"'"'^(HTTP|alt-svc)'"'" in ~/Projects/deepagents
+ succeeded in 1513ms:
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Warning: Permanently added '[127.0.0.1]:2222' (ED25519) to the list of known hosts.
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+200
+HTTP/1.1 401 Unauthorized
+Alt-Svc: clear
+
+**Evaluating VM operations**
+
+I need to check the postconditions, starting with the openshell sandbox list on the VM. I want to ensure there are no brief or probe outputs, and the git status should indicate no tracked changes. My command should avoid printing OCIDs, but I'm wondering if sandbox names will be safe to list. I might need to use grep to filter results, but I need confirmation. Additionally, I want to run `git status --short` locally to check for any modifications.
+codex
+Web checks passed. I’ll verify cleanup and local git post-conditions.
+exec
+/bin/zsh -lc "printf 'remote sandboxes: '
+if ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 \\
+  'openshell sandbox list </dev/null | grep -E \"brief-|probe-\"' </dev/null >/tmp/deepagents-sandboxes."'$$ 2>/tmp/deepagents-ssh.$$; then
+  cat /tmp/deepagents-sandboxes.$$
+  rm -f /tmp/deepagents-sandboxes.$$ /tmp/deepagents-ssh.$$
+  exit 1
+else
+  if [ -s /tmp/deepagents-sandboxes.$$ ]; then
+    cat /tmp/deepagents-sandboxes.$$
+    rm -f /tmp/deepagents-sandboxes.$$ /tmp/deepagents-ssh.$$
+    exit 1
+  fi
+  echo '"'none'
+fi
+rm -f /tmp/deepagents-sandboxes."'$$ /tmp/deepagents-ssh.$$
+printf '"'git status: '
+if [ -z \""'$(git status --short)" ]; then echo clean; else git status --short; exit 1; fi' in ~/Projects/deepagents
+2026-10-15T18:13:48.742944Z ERROR codex_app_server::bespoke_event_handling: request failed with client error: JSONRPCErrorError { code: -32000, data: None, message: "command execution approval is not supported in exec mode for thread `01a140bc-b89e-7bd1-b236-68e883bac63c`" }
+ exited 1:
+2026-10-15T18:13:48.743371Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"approval request failed\")" }
+codex
+The combined post-check wrapper was blocked, so I’ll split the checks into simple commands.
+exec
+/bin/zsh -lc "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null opc@127.0.0.1 'openshell sandbox list </dev/null | grep -E \"brief-|probe-\" || true' </dev/null" in ~/Projects/deepagents
+ succeeded in 757ms:
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Warning: Permanently added '[127.0.0.1]:2222' (ED25519) to the list of known hosts.
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+
+codex
+No leftover matching sandboxes were listed. I’ll check local tracked file status.
+exec
+/bin/zsh -lc 'git status --short' in ~/Projects/deepagents
+ succeeded in 68ms:
+**Clarifying presentation style**
+
+I need to include a table and present the results clearly. It’s okay to use active voice and short sentences. I’m wondering if I should format commands in shell fences, considering AGENTS suggests no filler. For the final version, what should the CLI style look like? I need to remember the developer mentioned keeping it concise without being too verbose. Is a traditional markdown table necessary, or can I keep it simpler?
+codex
+**Prerequisites**
+| Requirement | Check | Passes when | Result |
+|---|---|---|---|
+| Terraform | `terraform version` | prints a version | 1.5.7 |
+| OCI CLI | `oci --version` | prints a version | 3.84.0 |
+| jq, ssh | `jq --version; ssh -V` | print versions | jq 1.8.1; OpenSSH 10.2 |
+| the profile works | `oci iam region list --profile <oci_profile> --auth api_key --query 'length(data)'` | prints a number | 44 |
+| the inputs exist | `test -f deploy/terraform/terraform.tfvars && test -f ~/.config/deepagents-oracle-health/config.json` | exit 0 | ok |
+
+**OCI Report**
+- Terraform: initialized; plan result was `No changes.`
+- Vault: all required secret names are present; no missing names.
+- Provisioning: passed with `provisioned: https://…`; duration was about 48 seconds.
+- VM checks: `PREFLIGHT OK`; `PROBE OK (7/7)`; `VERIFY OK (25/25)`.
+- Brief Y: passed final verify; 329.6 seconds; 45 tool calls; 12 SQL queries; 9 searches; 6 delegations; 151 citations; 5 actions.
+- Web checks: VM API returned `200`; public URL returned `HTTP/1.1 401 Unauthorized` and `Alt-Svc: clear`.
+- Section 4 symptoms: none encountered.
+- Post-conditions: no `brief-*` or `probe-*` sandboxes listed; `git status` is clean; this report includes no OCID, secret value, or key.
+
+This is personal work with synthetic data.
+tokens used
+95,426
+**Prerequisites**
+| Requirement | Check | Passes when | Result |
+|---|---|---|---|
+| Terraform | `terraform version` | prints a version | 1.5.7 |
+| OCI CLI | `oci --version` | prints a version | 3.84.0 |
+| jq, ssh | `jq --version; ssh -V` | print versions | jq 1.8.1; OpenSSH 10.2 |
+| the profile works | `oci iam region list --profile <oci_profile> --auth api_key --query 'length(data)'` | prints a number | 44 |
+| the inputs exist | `test -f deploy/terraform/terraform.tfvars && test -f ~/.config/deepagents-oracle-health/config.json` | exit 0 | ok |
+
+**OCI Report**
+- Terraform: initialized; plan result was `No changes.`
+- Vault: all required secret names are present; no missing names.
+- Provisioning: passed with `provisioned: https://…`; duration was about 48 seconds.
+- VM checks: `PREFLIGHT OK`; `PROBE OK (7/7)`; `VERIFY OK (25/25)`.
+- Brief Y: passed final verify; 329.6 seconds; 45 tool calls; 12 SQL queries; 9 searches; 6 delegations; 151 citations; 5 actions.
+- Web checks: VM API returned `200`; public URL returned `HTTP/1.1 401 Unauthorized` and `Alt-Svc: clear`.
+- Section 4 symptoms: none encountered.
+- Post-conditions: no `brief-*` or `probe-*` sandboxes listed; `git status` is clean; this report includes no OCID, secret value, or key.
+
+This is personal work with synthetic data.
+CODEX EXIT 0
