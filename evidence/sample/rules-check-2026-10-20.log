@@ -1,0 +1,11 @@
+PASS agent A sees only SYN-A  ([('SYN-A',)])
+PASS agent A sees 5 labs (not B's)  (5)
+PASS another patient's id is invisible
+PASS agent cannot update the chart  (ORA-41900: missing UPDATE privilege on "SAMPLE_OWNER"."LAB_RESULT")
+PASS agent cannot delete proposals  (ORA-41900: missing DELETE privilege on "SAMPLE_OWNER"."CARE_ACTION")
+PASS care-coordinator medication change refused  (ORA-20014: policy: the care-coordinator agent may not propose a medication change; report this to the lead so it can ask the medication-safety agent)
+PASS proposal for another patient refused  (ORA-28115: policy with check option violation)
+PASS lab request starts as 'proposed' whatever the agent asked  (('proposed', 'care-coordinator'))
+PASS medication-safety change waits for a physician  (('needs_physician',))
+
+RULES OK (9/9)

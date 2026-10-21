@@ -1,0 +1,41 @@
+$ openshell sandbox create --name sample-111807 --from deep-agent-sample:0.1 --provider deepagents-genai --policy policy.yaml
+
+Created sandbox: sample-111807
+
+  [0.0s] Requesting compute...
+[0.0s] Sandbox allocated
+[0.0s] Pulling image deep-agent-sample:0.1
+[0.0s] Image already present
+[0.1s] Starting sandbox Container created
+Uploading <tmp>/app -> sandbox:/sandbox
+✓ Upload complete
+Uploading <tmp>/secrets -> sandbox:/sandbox
+✓ Upload complete
+$ openshell sandbox exec --name sample-111807 -- python3.12 agent.py
+/sandbox/app/agent.py:230: UserWarning: Parameters {'max_completion_tokens'} should be specified explicitly. Instead they were passed in as part of `model_kwargs` parameter.
+  sys.exit(dry_run() if parser.parse_args().dry_run else main())
+## Snapshot
+
+- Kidney function has declined over time, with eGFR 68 on 2025-03-10, 55 on 2025-11-02, and 47 on 2026-08-20 [LAB-A-001] [LAB-A-002] [LAB-A-003].
+- Recent diabetes data show glucose 62 mg/dL and HbA1c 8.4% on 2026-08-20 [LAB-A-004] [LAB-A-005].
+
+## What changed
+
+- The recorded eGFR declined from 68 to 47 mL/min/1.73m2 between 2025-03-10 and 2026-08-20 [LAB-A-001] [LAB-A-003].
+- The latest glucose was low at 62 mg/dL despite HbA1c remaining elevated at 8.4% [LAB-A-004] [LAB-A-005].
+
+## Medication review
+
+- Ibuprofen 400 mg as needed, used most days, deserves priority review because medication-safety proposed stopping ibuprofen and avoiding NSAIDs with the most recent eGFR at 47 [MED-A-003] [LAB-A-003].
+- Metformin 1000 mg twice daily is listed and should be reviewed with kidney function, but medication-safety found the chart does not support stopping it for an “eGFR below 30” rationale because the current eGFR is 47 [MED-A-001] [LAB-A-003].
+- Glipizide 10 mg twice daily is listed and deserves review in the context of reduced kidney function and the recent glucose of 62 mg/dL [MED-A-002] [LAB-A-004].
+
+## Proposed actions
+
+- Before the visit, repeat serum creatinine/eGFR and electrolytes, and obtain a urine albumin-to-creatinine ratio [SYN-A] [LAB-SYN-A-EGFR].
+- At the visit, review CKD status, kidney-function trend, medication safety and dosing, and nephrotoxin avoidance [SYN-A] [LAB-SYN-A-EGFR].
+- Implement the medication-safety recommendation to stop ibuprofen and avoid NSAIDs given eGFR 47 and ibuprofen use most days [LAB-A-003] [MED-A-003].
+
+gate: 8 cited ids, 0 missing
+BRIEF OK
+exit=0

@@ -417,6 +417,7 @@ laptop took 295 s on the VM, with no sandbox network refusals.
 | `codex/` | the specifications and prompts: `SPEC.md` (local build), `SPEC-OCI.md` (OCI) |
 | `deck/` | the builder for the talk's slides; it needs a PowerPoint template that is not included |
 | `tests/` | checks that need no cloud account; CI runs them with lint, the web build, shellcheck and Terraform validation |
+| `sample/` | the whole pattern at small size (about 200 lines of Python, 150 of SQL), with its own Codex harness; tested end to end, transcripts in `evidence/sample/` |
 | `deploy/` | the demo in OCI: Terraform (private subnet, VM, Bastion, load balancer, Vault) and the VM provisioning scripts |
 
 ---

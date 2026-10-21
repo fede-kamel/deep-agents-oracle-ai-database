@@ -42,6 +42,7 @@ running anything.
 | `ui/`, `web/` | the web application: FastAPI backend, React front end; `web/scripts/ui-e2e.mjs` clicks through it in a browser |
 | `evidence/` | transcripts behind every claim, identifiers redacted |
 | `codex/` | the specification and the prompt |
+| `sample/` | a small, separate version of the pattern; its own `AGENTS.md` and `codex/` apply inside it |
 | `deploy/` | the demo in OCI: `terraform/`, `server/` provisioning (`provision.sh`, `connect.sh`), `install.sh`, `server/operator/vault-put.sh` |
 
 ## Verifying
